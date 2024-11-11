@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "gomoku"
+name = "src"
 version = "0.1.0"
 description = ""
 authors = ["jreivilo <j@outlook.com>"]
