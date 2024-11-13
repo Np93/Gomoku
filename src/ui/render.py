@@ -40,6 +40,7 @@ message_duration = 5  # Duration in seconds
 # Global variable to control game exit
 exit_game = False
 
+
 def draw_forbidden_message(message):
     """Draw the forbidden move message in the side panel."""
     font = pygame.font.Font(None, 32)

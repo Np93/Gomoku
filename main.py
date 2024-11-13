@@ -1,5 +1,6 @@
 from src.ui.render import render_game_ui
 
+
 def main():
     render_game_ui()
 
