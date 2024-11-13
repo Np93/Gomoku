@@ -223,10 +223,6 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
         winner_text = font.render(f"Le Joueur {winner} a gagné !", True, WINNER_COLOR)
         text_rect = winner_text.get_rect(center=(border_size + screen_size // 2, border_size + screen_size // 2))
         screen.blit(winner_text, text_rect)
-	
-    # if exit_game:
-    #     pygame.quit()
-    #     quit()
 
 def render_game_ui():
     global message_start_time, exit_game
