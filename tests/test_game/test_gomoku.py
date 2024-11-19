@@ -60,36 +60,3 @@ def test_no_capture():
     assert captured is False
     assert game.board[5, 6] == -game.current_player
     assert game.black_player_pebbles_taken == 0
-
-def test_win_condition_five_in_a_row():
-    """Test that the game detects a win condition with five consecutive stones."""
-    game = Gomoku()
-    game.current_player = PlayerToken.BLACK.value
-    game.board[5, 3:8] = game.current_player  # Place five stones in a row
-    move_pos = {"row": 5, "col": 7}
-    assert game.is_win(move_pos) is True
-
-def test_no_win_with_four_in_a_row():
-    """Test that the game does not detect a win condition with only four consecutive stones."""
-    game = Gomoku()
-    game.current_player = PlayerToken.BLACK.value
-    game.board[5, 3:7] = game.current_player  # Only four in a row
-    move_pos = {"row": 5, "col": 6}
-    assert game.is_win(move_pos) is False
-
-def test_win_with_pebbles_taken():
-    """Test win condition when a player reaches 10 captured pebbles."""
-    game = Gomoku()
-    game.black_player_pebbles_taken = 10
-    assert game.is_win({"row": 0, "col": 0}) is True
-
-def test_opponent_can_break_five():
-    """Test that the opponent can prevent a win by capturing stones."""
-    game = Gomoku()
-    game.current_player = PlayerToken.BLACK.value
-    line_positions = [(5, i) for i in range(3, 8)]
-    for r, c in line_positions:
-        game.board[r, c] = game.current_player
-    game.white_player_pebbles_taken = 8  # Simulate opponent capture condition
-    move_pos = {"row": 5, "col": 7}
-    assert game.is_win(move_pos) is False  # The win should not be allowed

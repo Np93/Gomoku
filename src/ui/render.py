@@ -225,9 +225,29 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
         text_rect = winner_text.get_rect(center=(border_size + screen_size // 2, border_size + screen_size // 2))
         screen.blit(winner_text, text_rect)
 
+def is_line_occupied(board, line):
+    """
+    Vérifie si une ligne est toujours entièrement occupée.
+
+    Args:
+        board (numpy.ndarray): Le plateau de jeu actuel.
+        line (list of tuple): Liste des positions (row, col) de la ligne à vérifier.
+
+    Returns:
+        bool: True si toutes les positions de la ligne sont occupées, False sinon.
+    """
+    for row, col in line:
+        if board[row, col] == 0:  # Vérifie si la case est vide
+            return True
+    return False
+
 def render_game_ui():
     global message_start_time, exit_game
     forbidden_message = None
+    coup_special = False  # Indique si un coup spécial est actif
+    special_turn_owner = None  # Suivi du joueur qui a obtenu le coup spécial
+    break_line_5 = None
+    var_win_type = None
 
     while not exit_game:
         game_mode = main_menu()
@@ -264,6 +284,8 @@ def render_game_ui():
                             if 0 <= row < board_size and 0 <= col < board_size:
                                 if gomoku.board[row, col] == PlayerToken.EMPTY.value:
                                     gomoku.board[row, col] = gomoku.current_player
+
+                                    # Vérification des captures et des mouvements interdits
                                     if not gomoku.check_capture_and_update({"row": row, "col": col}):
                                         forbidden = gomoku.is_move_forbidden({"row": row, "col": col})
                                         if forbidden:
@@ -272,12 +294,63 @@ def render_game_ui():
                                             gomoku.board[row, col] = PlayerToken.EMPTY.value
                                             continue
 
-                                    if gomoku.is_win({"row": row, "col": col}):
+                                    # Vérification de la victoire
+                                    win_detected, line, win_type = gomoku.is_win({"row": row, "col": col})
+                                    if win_type == "win_five":
+                                        print("Victoire par ligne de 5 !")
+                                        winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+                                        if var_win_type != "break_line":
+                                            game_over = True
+                                    elif win_type == "score_10":
+                                        print("Victoire par 10 points !")
                                         winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
                                         game_over = True
+                                    elif win_type == "break_line":
+                                        print("Tentative de casser la ligne de 5 avec un coup spécial !")
+                                        coup_special = True
+                                        special_turn_owner = gomoku.current_player  # L'adversaire prend le coup spécial
+                                        break_line_5 = line
+                                        var_win_type = win_type
+                                    elif win_type == "play_special":
+                                        print("Coup spécial pour l'adversaire !")
+                                        coup_special = True
+                                        special_turn_owner = gomoku.current_player  # Propriétaire du coup spécial
+                                        var_win_type = win_type
 
                                     if not game_over:
-                                        gomoku.current_player = -gomoku.current_player
+                                        # Gestion du coup spécial actif
+                                        if coup_special and special_turn_owner != gomoku.current_player:
+                                            if var_win_type == "break_line":
+                                                # Vérification d'une capture sur la ligne
+                                                capture_on_line = is_line_occupied(gomoku.board, break_line_5)
+                                                if capture_on_line:
+                                                    print("Capture réussie, la partie continue !")
+                                                    coup_special = False
+                                                    special_turn_owner = None
+                                                    var_win_type = None
+                                                    break_line_5 = None
+                                                    gomoku.current_player = -gomoku.current_player
+                                                else:
+                                                    print("Échec du coup spécial, victoire par ligne de 5 !")
+                                                    winner = "Noir" if -gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+                                                    game_over = True
+                                                    coup_special = False
+                                                    special_turn_owner = None
+                                                    var_win_type = None
+                                            else:  # Gestion pour `play_special`
+                                                print("Coup spécial terminé.")
+                                                # Vérifie si le joueur courant a réussi ou échoué
+                                                if gomoku.current_player == special_turn_owner:
+                                                    print("Coup spécial réussi, victoire pour le joueur ayant exécuté le coup spécial !")
+                                                    winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+                                                else:
+                                                    print("Coup spécial échoué, victoire pour le joueur ayant formé la ligne de 5 !")
+                                                    winner = "Noir" if special_turn_owner == PlayerToken.BLACK.value else "Blanc"
+                                                game_over = True
+                                                coup_special = False
+                                                special_turn_owner = None
+                                        else:
+                                            gomoku.current_player = -gomoku.current_player
 
                 if game_over and not exit_game:
                     action = end_game_menu(winner)
@@ -285,6 +358,8 @@ def render_game_ui():
                         gomoku = Gomoku()
                         game_over = False
                         winner = None
+                        coup_special = False
+                        special_turn_owner = None
                     elif action == "menu":
                         break
 
