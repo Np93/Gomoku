@@ -17,11 +17,14 @@ def test_double_three_rule():
     move_pos = {"row": 5, "col": 5}
     # Position initiale avec une configuration double-trois
     game.board[5, 4] = game.current_player
-    game.board[5, 6] = game.current_player
+    game.board[5, 3] = game.current_player
     game.board[4, 5] = game.current_player
-    game.board[6, 5] = game.current_player
+    game.board[3, 5] = game.current_player
     # Double trois à 5,5 est interdit
-    assert game.is_move_forbidden(move_pos) is True
+    forbidden, message = game.is_move_forbidden(move_pos)
+    print(forbidden, message)
+    assert forbidden is True
+    assert message == "Mouvement interdit : double-trois détecté"
 
 def test_no_double_three():
     """Test a valid move that should not be restricted by the double-three rule."""
@@ -32,7 +35,9 @@ def test_no_double_three():
     game.board[4, 5] = -game.current_player
     game.board[6, 5] = -game.current_player
     # Ce mouvement ne crée pas de double-trois et devrait être permis
-    assert game.is_move_forbidden(move_pos) is False
+    forbidden, message = game.is_move_forbidden(move_pos)
+    assert forbidden is False
+    assert message == "Mouvement autorisé"
 
 def test_capture_rule():
     """Test capturing opponent stones."""

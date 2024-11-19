@@ -38,7 +38,7 @@ class Gomoku:
 		# Check for the double-three rule
 		if self.count_double_three(move_pos):
 			self.board[row][col] = 0  # Remove the temporary stone
-			return True, "règle du double trois"  # The move is forbidden due to double-three
+			return True, "règle du double-trois"  # The move is forbidden due to double-three
 
 		if self.check_forbidden_pattern(move_pos):
 			self.board[row][col] = 0
