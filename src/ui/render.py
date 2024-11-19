@@ -42,12 +42,37 @@ exit_game = False
 
 
 def draw_forbidden_message(message):
-    """Draw the forbidden move message in the side panel."""
+    """
+    Dessine le message de mouvement interdit dans le panneau latéral,
+    en découpant le texte si nécessaire pour éviter qu'il dépasse les limites.
+    """
     font = pygame.font.Font(None, 32)
-    text_surface = font.render(message, True, WINNER_COLOR)
-    message_x = screen_size + 2 * border_size  # Position in the side panel
-    message_y = 200  # Position below the next player text
-    screen.blit(text_surface, (message_x, message_y))
+    max_width = score_panel_width - 20  # Largeur maximale pour le texte (ajustée pour laisser une marge)
+    words = message.split()  # Découpe le texte en mots
+    lines = []
+    current_line = ""
+
+    # Découpe le texte en lignes en fonction de la largeur maximale
+    for word in words:
+        test_line = f"{current_line} {word}".strip()
+        text_width, _ = font.size(test_line)
+        if text_width <= max_width:
+            current_line = test_line
+        else:
+            lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+
+    # Dessine chaque ligne
+    message_x = screen_size + 2 * border_size  # Position dans le panneau latéral
+    message_y = 200  # Position de départ pour le message
+    line_spacing = 35  # Espacement entre les lignes
+
+    for line in lines:
+        text_surface = font.render(line, True, WINNER_COLOR)
+        screen.blit(text_surface, (message_x, message_y))
+        message_y += line_spacing
 
 def main_menu():
     """Display the main menu and handle user interaction."""
@@ -287,9 +312,9 @@ def render_game_ui():
 
                                     # Vérification des captures et des mouvements interdits
                                     if not gomoku.check_capture_and_update({"row": row, "col": col}):
-                                        forbidden = gomoku.is_move_forbidden({"row": row, "col": col})
+                                        forbidden, message = gomoku.is_move_forbidden({"row": row, "col": col})
                                         if forbidden:
-                                            forbidden_message = f"Mouvement interdit : ({col}, {row})"
+                                            forbidden_message = f"Mouvement interdit : {message}"#({col}, {row})"
                                             message_start_time = time.time()
                                             gomoku.board[row, col] = PlayerToken.EMPTY.value
                                             continue

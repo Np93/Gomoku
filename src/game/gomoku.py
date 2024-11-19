@@ -38,9 +38,56 @@ class Gomoku:
 		# Check for the double-three rule
 		if self.count_double_three(move_pos):
 			self.board[row][col] = 0  # Remove the temporary stone
-			return True  # The move is forbidden due to double-three
+			return True, "règle du double trois"  # The move is forbidden due to double-three
 
-		return False  # The move is legal if no captures and not double-three
+		if self.check_forbidden_pattern(move_pos):
+			self.board[row][col] = 0
+			return True, "capture automatique"
+
+		return False, "Mouvement autorisé"  # The move is legal if no captures and not double-three
+
+	def check_forbidden_pattern(self, move_pos):
+		"""
+		Vérifie si le mouvement proposé crée une configuration interdite 
+		(adversaire, joueur, vide, adversaire).
+
+		Args:
+			move_pos (dict): Position du mouvement proposé sous la forme {'row': int, 'col': int}.
+
+		Returns:
+			bool: True si le mouvement crée une configuration interdite, False sinon.
+		"""
+		row, col = move_pos['row'], move_pos['col']
+		opponent = -self.current_player  # Token de l'adversaire
+		player = self.current_player  # Token du joueur actuel
+		
+		# Directions : horizontale, verticale et diagonales
+		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+
+		for dr, dc in directions:
+			for sign in [1, -1]:  # Vérifie dans les deux sens
+				# Crée le motif (adversaire, joueur, vide, adversaire)
+				pattern_positions = [
+					(row + sign * dr * i, col + sign * dc * i) for i in range(-2, 2)
+				]
+
+				# Vérifie que toutes les positions sont dans les limites
+				if all(self.is_within_bounds(pos) for pos in pattern_positions):
+					stones = [
+						self.board[pattern_positions[i][0], pattern_positions[i][1]]
+						for i in range(4)
+					]
+
+					# Vérifie si le motif interdit est détecté
+					if (
+						stones[0] == opponent and
+						stones[1] == player and
+						stones[2] == player and  # Case vide où le joueur veut jouer
+						stones[3] == opponent
+					):
+						return True
+
+		return False
 
 	def count_double_three(self, move_pos):
 		"""Check if the move creates a double-three configuration."""
