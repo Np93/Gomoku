@@ -74,6 +74,16 @@ def draw_forbidden_message(message):
         screen.blit(text_surface, (message_x, message_y))
         message_y += line_spacing
 
+def draw_button(screen, button_rect, text, font, mouse_pos, button_color, hover_color, text_color):
+    """Draw a button with hover effect and text."""
+    if button_rect.collidepoint(mouse_pos):
+        pygame.draw.rect(screen, hover_color, button_rect)
+    else:
+        pygame.draw.rect(screen, button_color, button_rect)
+    text_surface = font.render(text, True, text_color)
+    screen.blit(text_surface, (button_rect.centerx - text_surface.get_width() // 2,
+                               button_rect.centery - text_surface.get_height() // 2))
+
 def main_menu():
     """Display the main menu and handle user interaction."""
     font = pygame.font.Font(None, 60)
@@ -94,26 +104,14 @@ def main_menu():
         normal_button = pygame.Rect(total_screen_width // 2 - 100, 300, 200, 50)
         special_button = pygame.Rect(total_screen_width // 2 - 100, 400, 200, 50)
         
-        # Button text
-        normal_text = small_font.render("Partie normale", True, WHITE)
-        special_text = small_font.render("Partie spéciale", True, WHITE)
-        
-        # Draw buttons and detect hover
+        # Mouse position
         mouse_pos = pygame.mouse.get_pos()
         
-        # Draw the "Partie normale" button
-        if normal_button.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, BUTTON_HOVER_COLOR, normal_button)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR, normal_button)
-        screen.blit(normal_text, (normal_button.centerx - normal_text.get_width() // 2, normal_button.centery - normal_text.get_height() // 2))
-        
-        # Draw the "Partie spéciale" button
-        if special_button.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, BUTTON_HOVER_COLOR, special_button)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR, special_button)
-        screen.blit(special_text, (special_button.centerx - special_text.get_width() // 2, special_button.centery - special_text.get_height() // 2))
+        # Draw buttons using the draw_button function
+        draw_button(screen, normal_button, "Partie normale", small_font, mouse_pos,
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+        draw_button(screen, special_button, "Partie spéciale", small_font, mouse_pos,
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
         
         # Draw the round "Quitter" button
         pygame.draw.circle(screen, QUIT_BUTTON_COLOR, quit_button_center, quit_button_radius)
@@ -161,26 +159,14 @@ def end_game_menu(winner):
         replay_button = pygame.Rect(total_screen_width // 2 - 100, 300, 200, 50)
         menu_button = pygame.Rect(total_screen_width // 2 - 110, 400, 220, 50)  # Widened button
         
-        # Button text
-        replay_text = small_font.render("Rejouer", True, WHITE)
-        menu_text = small_font.render("Retour au menu", True, WHITE)
-        
-        # Draw buttons and detect hover
+        # Mouse position
         mouse_pos = pygame.mouse.get_pos()
         
-        # Draw the "Rejouer" button
-        if replay_button.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, BUTTON_HOVER_COLOR, replay_button)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR, replay_button)
-        screen.blit(replay_text, (replay_button.centerx - replay_text.get_width() // 2, replay_button.centery - replay_text.get_height() // 2))
-        
-        # Draw the "Retour au menu" button
-        if menu_button.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, BUTTON_HOVER_COLOR, menu_button)
-        else:
-            pygame.draw.rect(screen, BUTTON_COLOR, menu_button)
-        screen.blit(menu_text, (menu_button.centerx - menu_text.get_width() // 2, menu_button.centery - menu_text.get_height() // 2))
+        # Draw buttons using the draw_button function
+        draw_button(screen, replay_button, "Rejouer", small_font, mouse_pos,
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+        draw_button(screen, menu_button, "Retour au menu", small_font, mouse_pos,
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
         
         # Draw the round "Quitter" button
         pygame.draw.circle(screen, QUIT_BUTTON_COLOR, quit_button_center, quit_button_radius)
@@ -271,8 +257,8 @@ def render_game_ui():
     forbidden_message = None
     coup_special = False  # Indique si un coup spécial est actif
     special_turn_owner = None  # Suivi du joueur qui a obtenu le coup spécial
-    break_line_5 = None
-    var_win_type = None
+    break_line_5 = None # indique si il y a une possibiliter de briser la ligne de 5
+    var_win_type = None # indique si une condition de victoire est actuellement disponible
 
     while not exit_game:
         game_mode = main_menu()
