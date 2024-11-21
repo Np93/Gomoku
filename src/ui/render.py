@@ -84,12 +84,25 @@ def draw_button(screen, button_rect, text, font, mouse_pos, button_color, hover_
     screen.blit(text_surface, (button_rect.centerx - text_surface.get_width() // 2,
                                button_rect.centery - text_surface.get_height() // 2))
 
+def draw_quit_button(screen, quit_center, radius, font, text_color, button_color):
+    """Draw the round 'Quitter' button."""
+    pygame.draw.circle(screen, button_color, quit_center, radius)
+    quit_text = font.render("Quitter", True, text_color)
+    screen.blit(quit_text, (quit_center[0] - quit_text.get_width() // 2,
+                            quit_center[1] - quit_text.get_height() // 2))
+
+def handle_quit_button(mouse_pos, quit_center, radius):
+    """Check if the 'Quitter' button is clicked and quit the game if it is."""
+    if (mouse_pos[0] - quit_center[0]) ** 2 + (mouse_pos[1] - quit_center[1]) ** 2 <= radius ** 2:
+        pygame.quit()
+        quit()
+
 def main_menu():
     """Display the main menu and handle user interaction."""
     font = pygame.font.Font(None, 60)
     small_font = pygame.font.Font(None, 40)
+    quit_font = pygame.font.Font(None, 30)
     
-    # Position and size for the round "Quitter" button
     quit_button_radius = 40
     quit_button_center = (total_screen_width - quit_button_radius - 30, total_screen_height - quit_button_radius - 30)
     
@@ -100,11 +113,11 @@ def main_menu():
         title_text = font.render("Gomoku", True, WHITE)
         screen.blit(title_text, (total_screen_width // 2 - title_text.get_width() // 2, 100))
         
-        # Define button rectangles for "Partie normale" and "Partie spéciale"
+        # Define button rectangles for "Partie normale", "Partie spéciale", and "Duo"
         normal_button = pygame.Rect(total_screen_width // 2 - 100, 300, 200, 50)
         special_button = pygame.Rect(total_screen_width // 2 - 100, 400, 200, 50)
+        duo_button = pygame.Rect(total_screen_width // 2 - 100, 500, 200, 50)  # New "Duo" button
         
-        # Mouse position
         mouse_pos = pygame.mouse.get_pos()
         
         # Draw buttons using the draw_button function
@@ -112,13 +125,11 @@ def main_menu():
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
         draw_button(screen, special_button, "Partie spéciale", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+        draw_button(screen, duo_button, "Duo", small_font, mouse_pos,  # Draw the "Duo" button
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
         
-        # Draw the round "Quitter" button
-        pygame.draw.circle(screen, QUIT_BUTTON_COLOR, quit_button_center, quit_button_radius)
-        
-        # Text for "Quitter" inside the round button
-        quit_text = pygame.font.Font(None, 30).render("Quitter", True, WHITE)
-        screen.blit(quit_text, (quit_button_center[0] - quit_text.get_width() // 2, quit_button_center[1] - quit_text.get_height() // 2))
+        # Draw the "Quitter" button using draw_quit_button
+        draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, WHITE, QUIT_BUTTON_COLOR)
         
         # Event handling
         for event in pygame.event.get():
@@ -130,9 +141,9 @@ def main_menu():
                     return "normal"
                 elif special_button.collidepoint(mouse_pos):
                     return "special"
-                elif (mouse_pos[0] - quit_button_center[0]) ** 2 + (mouse_pos[1] - quit_button_center[1]) ** 2 <= quit_button_radius ** 2:
-                    pygame.quit()
-                    quit()
+                elif duo_button.collidepoint(mouse_pos):  # Handle "Duo" button click
+                    return "duo"
+                handle_quit_button(mouse_pos, quit_button_center, quit_button_radius)
 
         pygame.display.flip()
         if exit_game:
@@ -143,8 +154,8 @@ def end_game_menu(winner):
     """Display the end game menu with options to replay, return to menu, or quit."""
     font = pygame.font.Font(None, 60)
     small_font = pygame.font.Font(None, 40)
+    quit_font = pygame.font.Font(None, 30)
     
-    # Position and size for the round "Quitter" button in the end game menu
     quit_button_radius = 40
     quit_button_center = (total_screen_width - quit_button_radius - 30, total_screen_height - quit_button_radius - 30)
     
@@ -157,9 +168,8 @@ def end_game_menu(winner):
         
         # Define button rectangles for "Rejouer" and "Retour au menu"
         replay_button = pygame.Rect(total_screen_width // 2 - 100, 300, 200, 50)
-        menu_button = pygame.Rect(total_screen_width // 2 - 110, 400, 220, 50)  # Widened button
+        menu_button = pygame.Rect(total_screen_width // 2 - 110, 400, 220, 50)
         
-        # Mouse position
         mouse_pos = pygame.mouse.get_pos()
         
         # Draw buttons using the draw_button function
@@ -168,12 +178,8 @@ def end_game_menu(winner):
         draw_button(screen, menu_button, "Retour au menu", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
         
-        # Draw the round "Quitter" button
-        pygame.draw.circle(screen, QUIT_BUTTON_COLOR, quit_button_center, quit_button_radius)
-        
-        # Text for "Quitter" inside the round button
-        quit_text = pygame.font.Font(None, 30).render("Quitter", True, WHITE)
-        screen.blit(quit_text, (quit_button_center[0] - quit_text.get_width() // 2, quit_button_center[1] - quit_text.get_height() // 2))
+        # Draw the "Quitter" button using draw_quit_button
+        draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, WHITE, QUIT_BUTTON_COLOR)
         
         # Event handling
         for event in pygame.event.get():
@@ -185,9 +191,7 @@ def end_game_menu(winner):
                     return "replay"
                 elif menu_button.collidepoint(mouse_pos):
                     return "menu"
-                elif (mouse_pos[0] - quit_button_center[0]) ** 2 + (mouse_pos[1] - quit_button_center[1]) ** 2 <= quit_button_radius ** 2:
-                    pygame.quit()
-                    quit()
+                handle_quit_button(mouse_pos, quit_button_center, quit_button_radius)
 
         pygame.display.flip()
         if exit_game:
@@ -263,7 +267,7 @@ def render_game_ui():
     while not exit_game:
         game_mode = main_menu()
         
-        if game_mode == "normal" and not exit_game:
+        if game_mode in ["normal", "duo"] and not exit_game:
             gomoku = Gomoku()
             running = True
             game_over = False
@@ -310,8 +314,7 @@ def render_game_ui():
                                     if win_type == "win_five":
                                         print("Victoire par ligne de 5 !")
                                         winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-                                        if var_win_type != "break_line":
-                                            game_over = True
+                                        game_over = True
                                     elif win_type == "score_10":
                                         print("Victoire par 10 points !")
                                         winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
