@@ -4,7 +4,7 @@ import matplotlib
 
 import matplotlib.pyplot as plt
 import numpy as np
-
+import random
 from src.game.playerTokens import PlayerToken
 
 
@@ -36,3 +36,19 @@ def is_move_valid(gomoku, row, col):
 			return False
 
 	return True
+
+def get_random_move(gomoku):
+    """
+    Get a random valid move for the current player.
+
+    :param gomoku: Gomoku game instance.
+    :return: Tuple (row, col) representing the move.
+    """
+    possible_moves = get_all_possible_moves(gomoku)
+    random.shuffle(possible_moves)  # Shuffle the moves for randomness
+    
+    for row, col in possible_moves:
+        if is_move_valid(gomoku, row, col):
+            return row, col
+
+    return None
