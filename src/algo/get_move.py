@@ -27,28 +27,35 @@ def get_all_possible_moves(gomoku):
 def is_move_valid(gomoku, row, col):
 	
 	#copy the class
-	gomoku = gomoku.copy()
+	gomoku_copy = gomoku.copy()
 	
-	gomoku.board[row, col] = gomoku.current_player
-	if not gomoku.check_capture_and_update({"row": row, "col": col}) : #return 1 if there is a capture
-		if gomoku.is_move_forbidden ({"row": row, "col": col}):
-			print("Forbidden move: double three")
+	gomoku_copy.board[row, col] = gomoku_copy.current_player
+	if not gomoku_copy.check_capture_and_update({"row": row, "col": col}):
+		forbidden, message = gomoku_copy.is_move_forbidden({"row": row, "col": col})
+		if forbidden:
+			print(f"Mouvement interdit ({row}, {col}) : {message}")
 			return False
 
 	return True
 
 def get_random_move(gomoku):
-    """
-    Get a random valid move for the current player.
+	"""
+	Get a random valid move for the current player.
 
-    :param gomoku: Gomoku game instance.
-    :return: Tuple (row, col) representing the move.
-    """
-    possible_moves = get_all_possible_moves(gomoku)
-    random.shuffle(possible_moves)  # Shuffle the moves for randomness
-    
-    for row, col in possible_moves:
-        if is_move_valid(gomoku, row, col):
-            return row, col
+	:param gomoku: Gomoku game instance.
+	:return: Tuple (row, col) representing the move.
+	"""
+	# Récupérer tous les mouvements possibles
+	possible_moves = get_all_possible_moves(gomoku)
+	random.shuffle(possible_moves)  # Mélanger pour l'aléatoire
 
-    return None
+	# Parcourir les mouvements possibles
+	for row, col in possible_moves:
+		print(f"Test du mouvement ({row}, {col})")
+		if is_move_valid(gomoku, row, col):
+			print(f"Mouvement valide trouvé : ({row}, {col})")
+			return row, col
+
+	# Aucun mouvement valide trouvé
+	print("Aucun mouvement valide n'a été trouvé.")
+	return None
