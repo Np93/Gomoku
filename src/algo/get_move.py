@@ -143,18 +143,10 @@ class GomokuAI:
                             else:
                                 break
 
-                    # Nouvelle priorité : Si "player, opponent x4, empty" est détectée
-                    if len(line_coordinates) >= 6:
-                        if (
-                            self.gomoku.board[line_coordinates[0][0], line_coordinates[0][1]] == player and
-                            all(
-                                self.gomoku.board[line_coordinates[i][0], line_coordinates[i][1]] == opponent
-                                for i in range(1, 5)
-                            ) and
-                            self.gomoku.board[line_coordinates[5][0], line_coordinates[5][1]] == PlayerToken.EMPTY.value
-                        ):
-                            print(f"Configuration prioritaire détectée : {line_coordinates}")
-                            return [line_coordinates[5]]  # Retourner la case vide comme coup prioritaire
+                    # Priorité 1 : Bloquer une ligne de 4 adverse
+                    if count == 4:
+                        print(f"Blocage d'une ligne de 4 adverse à ({row}, {col})")
+                        return [(row, col)]
 
                     # Si une ligne de 5 est détectée, vérifier la possibilité de capture
                     if count == 5 and len(line_coordinates) == 5:
@@ -196,14 +188,7 @@ class GomokuAI:
                 return priority_moves[key]
 
         print("Aucun coup prioritaire trouvé.")
-        random_move = self.generate_random_moves_around_opponent(opponent)
-        if random_move:
-            priority_moves["random"].extend(random_move)
-        for key in ["random"]:
-            if priority_moves[key]:
-                print(f"Coups {key} : {priority_moves[key]}")
-                return priority_moves[key]
-        # return []
+        return []
 
     def generate_random_moves_around_opponent(self, opponent):
         """Génère un mouvement aléatoire autour des pions adverses."""
@@ -391,7 +376,6 @@ class GomokuAI:
                                     self.gomoku.board[line[5][0], line[5][1]] == PlayerToken.EMPTY.value
                                 ):
                                     score += 70000
-                                    return score
 
                     # Bonus en fonction du contrôle des pions sur le plateau
                     score += pions_on_board * 50
