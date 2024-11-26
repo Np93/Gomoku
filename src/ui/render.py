@@ -1,7 +1,7 @@
 import pygame
 from src.game.gomoku import Gomoku
 from src.game.playerTokens import PlayerToken
-from src.algo.get_move import get_random_move
+from src.algo.get_move import get_random_move, GomokuAI
 import time
 
 # Initialize Pygame
@@ -373,6 +373,7 @@ def render_game_ui():
         
         if game_mode in ["normal", "duo"] and not exit_game:
             gomoku = Gomoku()
+            ai = GomokuAI(gomoku=gomoku, depth=1)
             running = True
             game_over = False
             winner = None
@@ -388,14 +389,15 @@ def render_game_ui():
                 pygame.display.flip()
 
                 if game_mode == "normal" and gomoku.current_player == PlayerToken.WHITE.value:
-                    random_move = get_random_move(gomoku)
-                    if random_move:
-                        row, col = random_move
+                    # random_move = get_random_move(gomoku)
+                    best_move = ai.find_best_move(player=PlayerToken.WHITE.value)
+                    if best_move:
+                        row, col = best_move
                         gomoku.board[row, col] = gomoku.current_player
 
                         is_valid, forbidden_message = process_move(gomoku, row, col)
                         if not is_valid:
-                            print(forbidden_message)
+                            # print(forbidden_message)
                             gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
 
@@ -435,6 +437,7 @@ def render_game_ui():
                     action = end_game_menu(winner)
                     if action == "replay":
                         gomoku = Gomoku()
+                        ai = GomokuAI(gomoku)
                         game_over = False
                         winner = None
                         coup_special = False

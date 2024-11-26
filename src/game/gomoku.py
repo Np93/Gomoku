@@ -216,7 +216,7 @@ class Gomoku:
 				if opponent_pebbles_taken >= 8:
 					# Simule le tour de l’adversaire
 					self.current_player = -self.current_player
-					capture_possible = self.check_possible_capture()
+					capture_possible, empty_pos = self.check_possible_capture()
 					self.current_player = -self.current_player  # Rétablit le joueur actuel
 
 					# Si une capture est possible, retourne une indication pour le coup spécial
@@ -225,7 +225,7 @@ class Gomoku:
 
 				# Si l'adversaire a moins de 8 pierres, vérifie si une capture est possible sur la ligne de 5
 				self.current_player = -self.current_player
-				capture_on_five = self.check_capture_on_five(line)
+				capture_on_five, empty_pos = self.check_capture_on_five(line)
 				# capture_on_five = self.check_possible_capture()
 				self.current_player = -self.current_player
 				if capture_on_five:
@@ -327,7 +327,7 @@ class Gomoku:
 		opponent = -self.current_player  # Opponent's token
 		player = self.current_player  # Current player's token (the next player to move)
 
-		print(f"Checking possible captures for player {player} (next to move)")
+		# print(f"Checking possible captures for player {player} (next to move)")
 
 		# Scan the entire board
 		for row in range(self.board_size):
@@ -354,10 +354,10 @@ class Gomoku:
 									stones[3] == PlayerToken.EMPTY.value
 								):
 									print("Capture possible")
-									return True
+									return True, pattern[3]
 
-		print("Capture pas possible")
-		return False
+		# print("Capture pas possible")
+		return False, None
 
 	def check_capture_on_five(self, line):
 		"""
@@ -405,8 +405,9 @@ class Gomoku:
 			pos3_in_line = pattern[2] in line
 
 			if pos2_in_line or pos3_in_line:  # Si pos2 ou pos3 est dans la ligne
+				empty_pos = pattern[3]
 				print(f"Capture sur la ligne de 5 via pattern {pattern}")
-				return True
+				return True, empty_pos
 
 		print("No capture intersects with the line of 5")
-		return False
+		return False, None
