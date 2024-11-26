@@ -3,6 +3,7 @@ from src.game.gomoku import Gomoku
 from src.game.playerTokens import PlayerToken
 from src.algo.get_move import get_random_move, GomokuAI
 import time
+import tracemalloc
 
 # Initialize Pygame
 pygame.init()
@@ -437,6 +438,7 @@ def render_game_ui():
                     action = end_game_menu(winner)
                     if action == "replay":
                         gomoku = Gomoku()
+                        ai.reset(gomoku)
                         ai = GomokuAI(gomoku)
                         game_over = False
                         winner = None
