@@ -3,7 +3,7 @@ from src.game.gomoku import Gomoku
 from src.game.playerTokens import PlayerToken
 from src.algo.get_move import get_random_move, GomokuAI
 import time
-import tracemalloc
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -42,6 +42,13 @@ message_duration = 5  # Duration in seconds
 # Global variable to control game exit
 exit_game = False
 
+# Temps pour chaque joueur
+player_times = {
+    PlayerToken.BLACK.value: {"total_time": 0, "last_time": 0},
+    PlayerToken.WHITE.value: {"total_time": 0, "last_time": 0}
+}
+turn_start_time = None
+
 
 def draw_forbidden_message(message):
     """
@@ -68,7 +75,7 @@ def draw_forbidden_message(message):
 
     # Dessine chaque ligne
     message_x = screen_size + 2 * border_size  # Position dans le panneau latéral
-    message_y = 200  # Position de départ pour le message
+    message_y = 300  # Position de départ pour le message
     line_spacing = 35  # Espacement entre les lignes
 
     for line in lines:
@@ -208,6 +215,7 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
     grid_start = border_size + cell_size // 2
     grid_end = border_size + screen_size - cell_size // 2
 
+    # Dessiner le plateau
     for x in range(board_size):
         x_pos = grid_start + x * cell_size
         pygame.draw.line(screen, GRID_COLOR, (x_pos, grid_start), (x_pos, grid_end))
@@ -215,6 +223,7 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
         y_pos = grid_start + y * cell_size
         pygame.draw.line(screen, GRID_COLOR, (grid_start, y_pos), (grid_end, y_pos))
 
+    # Dessiner les pions
     for row in range(board_size):
         for col in range(board_size):
             if gomoku.board[row, col] == PlayerToken.WHITE.value:
@@ -222,6 +231,7 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
             elif gomoku.board[row, col] == PlayerToken.BLACK.value:
                 pygame.draw.circle(screen, BLACK, (grid_start + col * cell_size, grid_start + row * cell_size), int(pion_radius))
 
+    # Afficher les scores et le prochain joueur
     font = pygame.font.Font(None, 32)
     next_player = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
     black_score_text = font.render(f"Pions pris par Noir : {gomoku.black_player_pebbles_taken}", True, TEXT_COLOR)
@@ -233,7 +243,23 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
     screen.blit(white_score_text, (text_x, 100))
     screen.blit(next_player_text, (text_x, 150))
 
-    # Display the forbidden message if it exists
+    # Afficher les temps des joueurs
+    time_start_y = 200  # Point de départ pour les temps
+    line_spacing = 40  # Espacement vertical entre chaque ligne
+
+    black_time_text = font.render(
+        f"Noir: {player_times[PlayerToken.BLACK.value]['total_time']:.1f}s (dernier: {player_times[PlayerToken.BLACK.value]['last_time']:.1f}s)", 
+        True, TEXT_COLOR
+    )
+    white_time_text = font.render(
+        f"Blanc: {player_times[PlayerToken.WHITE.value]['total_time']:.1f}s (dernier: {player_times[PlayerToken.WHITE.value]['last_time']:.1f}s)", 
+        True, TEXT_COLOR
+    )
+
+    screen.blit(black_time_text, (text_x, time_start_y))
+    screen.blit(white_time_text, (text_x, time_start_y + line_spacing))
+
+    # Afficher un message d'erreur, si nécessaire
     if forbidden_message:
         draw_forbidden_message(forbidden_message)
 
@@ -362,7 +388,7 @@ def process_win(gomoku, row, col, coup_special, special_turn_owner, break_line_5
     return game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type
 
 def render_game_ui():
-    global message_start_time, exit_game
+    global message_start_time, exit_game, turn_start_time
     forbidden_message = None
     coup_special = False  # Indique si un coup spécial est actif
     special_turn_owner = None  # Suivi du joueur qui a obtenu le coup spécial
@@ -372,13 +398,17 @@ def render_game_ui():
     while not exit_game:
         game_mode = main_menu()
         
-        if game_mode in ["normal", "duo"] and not exit_game:
+        if game_mode in ["normal", "duo", "special"] and not exit_game:
             gomoku = Gomoku()
             ai = GomokuAI(gomoku=gomoku, depth=1)
             running = True
             game_over = False
             winner = None
-
+            ia_player = PlayerToken.WHITE.value
+        
+            if game_mode in ["special"] and not exit_game:
+                ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value]) # Déterminer aléatoirement qui est contrôlé par l'IA
+                print(ia_player)
             while running and not exit_game:
                 draw_board(gomoku, winner, forbidden_message)
                 
@@ -389,16 +419,26 @@ def render_game_ui():
                 
                 pygame.display.flip()
 
-                if game_mode == "normal" and gomoku.current_player == PlayerToken.WHITE.value:
+                if game_mode in ["normal", "special"] and gomoku.current_player == ia_player:
+                # if game_mode == "normal" and gomoku.current_player == PlayerToken.WHITE.value: # normale sans le player random
                     # random_move = get_random_move(gomoku)
-                    best_move = ai.find_best_move(player=PlayerToken.WHITE.value)
+                    # time start
+                    if not turn_start_time:
+                        turn_start_time = time.time()
+                    best_move = ai.find_best_move(player=ia_player)
                     if best_move:
                         row, col = best_move
                         gomoku.board[row, col] = gomoku.current_player
 
+                        # MAJ time
+                        if turn_start_time:
+                            turn_duration = time.time() - turn_start_time
+                            player_times[gomoku.current_player]["total_time"] += turn_duration
+                            player_times[gomoku.current_player]["last_time"] = turn_duration
+                            turn_start_time = None
+
                         is_valid, forbidden_message = process_move(gomoku, row, col)
                         if not is_valid:
-                            # print(forbidden_message)
                             gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
 
@@ -407,6 +447,9 @@ def render_game_ui():
                         )
 
                 else:
+                    # time start
+                    if not turn_start_time:
+                        turn_start_time = time.time()
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT:
                             running = False
@@ -430,6 +473,13 @@ def render_game_ui():
                                             gomoku.board[row, col] = PlayerToken.EMPTY.value
                                             continue
 
+                                        # MAJ time
+                                        if turn_start_time:
+                                            turn_duration = time.time() - turn_start_time
+                                            player_times[gomoku.current_player]["total_time"] += turn_duration
+                                            player_times[gomoku.current_player]["last_time"] = turn_duration
+                                            turn_start_time = None
+
                                         game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
                                             gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
                                         )
@@ -444,6 +494,8 @@ def render_game_ui():
                         winner = None
                         coup_special = False
                         special_turn_owner = None
+                        if game_mode in ["special"] and not exit_game:
+                            ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value])
                     elif action == "menu":
                         break
 
