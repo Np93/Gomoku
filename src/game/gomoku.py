@@ -40,9 +40,9 @@ class Gomoku:
 			self.board[row][col] = 0  # Remove the temporary stone
 			return True, "règle du double-trois"  # The move is forbidden due to double-three
 
-		if self.check_forbidden_pattern(move_pos):
-			self.board[row][col] = 0
-			return True, "capture automatique"
+		# if self.check_forbidden_pattern(move_pos):
+		# 	self.board[row][col] = 0
+		# 	return True, "capture automatique"
 
 		return False, "Mouvement autorisé"  # The move is legal if no captures and not double-three
 
