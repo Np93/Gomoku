@@ -1,7 +1,7 @@
 import pygame
 from src.game.gomoku import Gomoku
 from src.game.playerTokens import PlayerToken
-from src.algo.get_move import get_random_move, GomokuAI
+from src.algo.algo import GomokuAI
 import time
 import random
 
@@ -298,10 +298,9 @@ def process_move(gomoku, row, col):
             - is_valid (bool): True si le coup est valide, False sinon.
             - forbidden_message (str): Message d'erreur si le coup est interdit.
     """
-    if not gomoku.check_capture_and_update({"row": row, "col": col}):
-        forbidden, message = gomoku.is_move_forbidden({"row": row, "col": col})
-        if forbidden:
-            return False, f"Mouvement interdit : {message}"
+    if not gomoku.check_capture_and_update(row, col):
+        if gomoku.is_double_three(row, col):
+            return False, f"Mouvement interdit : Double trois détecté"
     return True, None
 
 def process_win(gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type):
@@ -420,9 +419,6 @@ def render_game_ui():
                 pygame.display.flip()
 
                 if game_mode in ["normal", "special"] and gomoku.current_player == ia_player:
-                # if game_mode == "normal" and gomoku.current_player == PlayerToken.WHITE.value: # normale sans le player random
-                    # random_move = get_random_move(gomoku)
-                    # time start
                     if not turn_start_time:
                         turn_start_time = time.time()
                     best_move = ai.find_best_move(player=ia_player)

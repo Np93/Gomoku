@@ -1,70 +1,7 @@
-import matplotlib
-# import tkinter
-# matplotlib.use('TkAgg')  # Use the TkAgg backend to prevent segmentation fault
-
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 from src.game.playerTokens import PlayerToken
-# from src.game.gomoku import Gomoku
-
-
-def get_all_possible_moves(gomoku):
-    """
-    Get all possible moves for the current player based on the current game state.
-
-    :param gomoku: Gomoku game instance.
-    :return: List of all possible moves.
-    """
-
-    possible_moves = []
-    for row in range(19):
-        for col in range(19):
-            if gomoku.board[row, col] == PlayerToken.EMPTY.value:
-                possible_moves.append((row, col))
-
-    return possible_moves
-
-def is_move_valid(gomoku, row, col):
-    
-    #copy the class
-    gomoku_copy = gomoku.copy()
-    
-    gomoku_copy.board[row, col] = gomoku_copy.current_player
-    if not gomoku_copy.check_capture_and_update({"row": row, "col": col}):
-        forbidden, message = gomoku_copy.is_move_forbidden({"row": row, "col": col})
-        if forbidden:
-            print(f"Mouvement interdit ({row}, {col}) : {message}")
-            return False
-
-    return True
-
-def get_random_move(gomoku):
-    """
-    Get a random valid move for the current player.
-
-    :param gomoku: Gomoku game instance.
-    :return: Tuple (row, col) representing the move.
-    """
-    # Récupérer tous les mouvements possibles
-    possible_moves = get_all_possible_moves(gomoku)
-    random.shuffle(possible_moves)  # Mélanger pour l'aléatoire
-
-    # Parcourir les mouvements possibles
-    for row, col in possible_moves:
-        print(f"Test du mouvement ({row}, {col})")
-        if is_move_valid(gomoku, row, col):
-            print(f"Mouvement valide trouvé : ({row}, {col})")
-            return row, col
-
-    # Aucun mouvement valide trouvé
-    print("Aucun mouvement valide n'a été trouvé.")
-    return None
-
-
-
-
-
 
 class GomokuAI:
     def __init__(self, gomoku, depth=3):
@@ -87,27 +24,6 @@ class GomokuAI:
         self.board_size = gomoku.board_size
         self.depth = 3
 
-    @staticmethod
-    def is_move_valid(gomoku, row, col):
-        """Vérifie si un mouvement est valide selon les règles de Gomoku."""
-        # Vérifier que la case est vide
-        if gomoku.board[row, col] != 0:
-            print(f"Case non vide : ({row}, {col})")
-            return False
-
-        # Créer une copie pour simuler le mouvement
-        gomoku_copy = gomoku.copy()
-        gomoku_copy.board[row, col] = gomoku_copy.current_player
-
-        # Vérifier les captures et les mouvements interdits
-        if not gomoku_copy.check_capture_and_update({"row": row, "col": col}):
-            forbidden, message = gomoku_copy.is_move_forbidden({"row": row, "col": col})
-            if forbidden:
-                print(f"Mouvement interdit ({row}, {col}) : {message}")
-                return False
-
-        return True
-
     def generate_priority_moves(self, player):
         """Génère une liste de coups prioritaires."""
         print(f"--- Génération des coups pour le joueur {player} ---")
@@ -117,7 +33,7 @@ class GomokuAI:
 
         for row in range(self.board_size):
             for col in range(self.board_size):
-                if self.gomoku.board[row, col] != 0 or not self.is_move_valid(self.gomoku, row, col):
+                if self.gomoku.board[row, col] != 0 or not self.gomoku.is_move_valid(self.gomoku, row, col):
                     continue
 
                 # Vérifier les alignements et priorités
@@ -199,7 +115,7 @@ class GomokuAI:
                 if self.gomoku.board[row, col] == opponent:
                     for dr, dc in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
                         nx, ny = row + dr, col + dc
-                        if 0 <= nx < self.board_size and 0 <= ny < self.board_size and self.is_move_valid(self.gomoku, nx, ny):
+                        if 0 <= nx < self.board_size and 0 <= ny < self.board_size and self.gomoku.is_move_valid(self.gomoku, nx, ny):
                             possible_moves.append((nx, ny))
 
         if not possible_moves:
@@ -222,7 +138,7 @@ class GomokuAI:
             for row, col in moves:
                 gomoku_copy = self.gomoku.copy()
                 gomoku_copy.board[row, col] = player
-                gomoku_copy.check_capture_and_update({"row": row, "col": col})
+                gomoku_copy.check_capture_and_update(row, col)
 
                 eval = self.minimax(depth - 1, False, alpha, beta, player)
                 max_eval = max(max_eval, eval)
@@ -235,7 +151,7 @@ class GomokuAI:
             for row, col in moves:
                 gomoku_copy = self.gomoku.copy()
                 gomoku_copy.board[row, col] = -player
-                gomoku_copy.check_capture_and_update({"row": row, "col": col})
+                gomoku_copy.check_capture_and_update(row, col)
 
                 eval = self.minimax(depth - 1, True, alpha, beta, player)
                 min_eval = min(min_eval, eval)
@@ -259,7 +175,7 @@ class GomokuAI:
         for row, col in moves:
             gomoku_copy = self.gomoku.copy()
             gomoku_copy.board[row, col] = player
-            gomoku_copy.check_capture_and_update({"row": row, "col": col})
+            gomoku_copy.check_capture_and_update(row, col)
 
             score = self.minimax(self.depth - 1, False, float('-inf'), float('inf'), player)
             print(f"Score pour le mouvement ({row}, {col}) : {score}")
