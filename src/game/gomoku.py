@@ -4,27 +4,29 @@ from src.game.playerTokens import PlayerToken
 class Gomoku:
 	"""Gomoku game class."""
 
-	def __init__(self, board_size: int = 19, player: int = PlayerToken.BLACK.value):
+	def __init__(self):
 		"""Initialize Gomoku game."""
+		#NOTE ALL ATTRIBUTES ARE CONSIDERED AS PRIVATE EVEN WITHOUT THE UNDERSCORE
 		super().__init__()
-		self.board_size: int = board_size
-		self.board: np.ndarray = np.zeros((board_size, board_size), dtype='int8')
-		self.current_player: int = player
+		self.board_size: int = 19
+		self.board: np.ndarray = np.zeros((self.board_size, self.board_size), dtype=int)
+		self.current_player: int = PlayerToken.BLACK.value
 		self.white_player_pebbles_taken: int = 0
 		self.black_player_pebbles_taken: int = 0
 		self.forced_moves: list = []
 		self.game_over: bool = False
 
-	def copy(self):
+	def copy(self) -> "Gomoku":
 		"""Create a copy of the current game state."""
-		copy = Gomoku(self.board_size)
-		copy.board = np.copy(self.board)
-		copy.current_player = self.current_player
-		copy.white_player_pebbles_taken = self.white_player_pebbles_taken
-		copy.black_player_pebbles_taken = self.black_player_pebbles_taken
-		copy.forced_moves = self.forced_moves
-		copy.game_over = self.game_over
-		return copy
+		new_copy = Gomoku()
+		new_copy.board = np.copy(self.board)
+		new_copy.current_player = self.current_player
+		new_copy.white_player_pebbles_taken = self.white_player_pebbles_taken
+		new_copy.black_player_pebbles_taken = self.black_player_pebbles_taken
+		new_copy.forced_moves = self.forced_moves.copy()  # Ensure a separate list
+		new_copy.game_over = self.game_over
+		return new_copy
+
 
 	### UTILS ###
 	def draw_board(self):
@@ -40,11 +42,39 @@ class Gomoku:
 			print(row)
 
 	### RULES AND GAME LOGIC ###
-	def undo_move(self, row: int, col: int):
+	#NOTE We shoud use only this function to play the game
+	def process_move(self, row: int, col: int) -> bool:
+		"""
+		Processes a move by the current player at the specified row and column.
+		"""
+
+		# Update the board with the current player's move
+		self.board[row, col] = self.current_player
+
+		# Check for captures and update the board
+		if not gomoku_copy.check_capture_and_update(row, col): #TODO pass check_capture_and_update as a private method
+			if gomoku_copy.is_double_three(row, col): #TODO pass is_double_three as a private method
+				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
+				self._undo_move(row, col)
+				return False
+
+		#TODO Check for win condition
+
+		# Switch to the next player
+		self.current_player = -self.current_player
+
+		return True
+ 
+	def _undo_move(self, row: int, col: int) -> None:
 		"""Undo a move on the board."""
 		self.board[row, col] = PlayerToken.EMPTY.value
 
-	def check_capture_and_update(self, row : int, col : int):
+	def _is_within_bounds(self, row : int, col : int) -> bool:
+		"""Check if a position is within the board bounds."""
+		return 0 <= row < self.board_size and 0 <= col < self.board_size
+
+	#NOTE This function work 
+	def check_capture_and_update(self, row : int, col : int) -> bool:
 		"""Check for captures and update the board.
   		Le mouvement a déjà été effectué, row et col sont les positions du mouvement.
 		Cette fonction update le board par contre en cas de capture."""
@@ -99,11 +129,12 @@ class Gomoku:
 		if not gomoku_copy.check_capture_and_update(row, col):
 			if gomoku_copy.is_double_three(row, col):
 				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
-				self.undo_move(row, col)
+				self._undo_move(row, col)
 				return False
 
 		return True
 
+	#TODO CHECK THIS FUNCTION
 	def is_double_three(self, row: int, col: int) -> bool:
 		"""Check if the move creates a double-three configuration.
 		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
@@ -134,7 +165,7 @@ class Gomoku:
 					color_sequence.insert(0, self.board[r, c])
 				else :
 					break
-			if self.analyze_sequence_for_threats(color_sequence, player, i_pos):
+			if self._analyze_sequence_for_threats(color_sequence, player, i_pos):
 				threats += 1
 
 			# Early exit if more than one threat is found (double-three condition)
@@ -143,7 +174,7 @@ class Gomoku:
 		
 		return False
 
-	def analyze_sequence_for_threats(self, sequence, player, middle_index):
+	def _analyze_sequence_for_threats(self, sequence, player, middle_index):
 		"""Analyze a sequence to find specific open three threats ensuring the played stone is part of the pattern."""
 		seq_len = len(sequence)
 
@@ -251,10 +282,6 @@ class Gomoku:
 		# Si aucune condition de victoire n’est remplie, retourne False
 		return False, [], "no_win"
 
-	def is_within_bounds(self, pos):
-		"""Check if a position is within the board bounds."""
-		return 0 <= pos[0] < self.board_size and 0 <= pos[1] < self.board_size
-
 	def check_possible_capture(self):
 		"""Check if the current player can potentially capture a piece on the entire board."""
 		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # Horizontal, vertical, and diagonals
@@ -275,7 +302,7 @@ class Gomoku:
 							]
 
 							# Ensure all positions in the pattern are within bounds
-							if all(self.is_within_bounds(pos) for pos in pattern):
+							if all(self._is_within_bounds(row, col) for row, col in pattern):
 								stones = [
 									self.board[pattern[i][0], pattern[i][1]] for i in range(4)
 								]
@@ -317,7 +344,7 @@ class Gomoku:
 							]
 
 							# Vérifie si toutes les positions du motif sont dans les limites
-							if all(self.is_within_bounds(pos) for pos in pattern):
+							if all(self._is_within_bounds(row , col) for row, col in pattern):
 								stones = [
 									self.board[pattern[i][0], pattern[i][1]] for i in range(4)
 								]
