@@ -45,7 +45,10 @@ class Gomoku:
 		self.board[row, col] = PlayerToken.EMPTY.value
 
 	def check_capture_and_update(self, row : int, col : int):
-		"""Check for captures and update the board."""
+		"""Check for captures and update the board.
+  		Le mouvement a déjà été effectué, row et col sont les positions du mouvement.
+		Cette fonction update le board par contre en cas de capture."""
+  
 		directions = [(0, 1), (1, 0), (1, 1), (1, -1)] # Horizontal, vertical, and diagonals
 		is_captures = False
 		opponent = -self.current_player
@@ -81,7 +84,8 @@ class Gomoku:
 
 	@staticmethod
 	def is_move_valid(self, row: int, col: int) -> bool:
-		"""Vérifie si un mouvement est valide selon les règles de Gomoku."""
+		"""Vérifie si un mouvement est valide selon les règles de Gomoku.
+		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
 		# Vérifier que la case est vide
 		if self.board[row, col] != 0:
 			print(f"Case non vide : ({row}, {col})")
@@ -102,7 +106,7 @@ class Gomoku:
 
 	def is_double_three(self, row: int, col: int) -> bool:
 		"""Check if the move creates a double-three configuration.
-		It Assumes the move has already been made on the board."""
+		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
 		threats = 0
 		player = self.current_player
 		color_sequence = []
