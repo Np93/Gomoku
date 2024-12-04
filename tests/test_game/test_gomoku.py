@@ -45,7 +45,7 @@ def test_capture_rule():
     game.board[5, 5] = game.current_player
     game.board[5, 6] = -game.current_player
     game.board[5, 7] = -game.current_player
-    game.check_capture_and_update(5, 8)
+    game._check_capture_and_update(5, 8)
     # Les pierres capturées sont supprimées et le joueur actuel reçoit des points
     assert game.board[5, 6] == 0
     assert game.board[5, 7] == 0
@@ -58,7 +58,7 @@ def test_no_capture():
     game.board[5, 5] = game.current_player
     game.board[5, 6] = -game.current_player
     game.board[5, 7] = game.current_player
-    captured = game.check_capture_and_update(5, 8)
+    captured = game._check_capture_and_update(5, 8)
     assert captured is False
     assert game.board[5, 6] == -game.current_player
     assert game.black_player_pebbles_taken == 0

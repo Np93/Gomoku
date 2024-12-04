@@ -91,7 +91,7 @@ def draw_button(screen, button_rect, text, font, mouse_pos, button_color, hover_
         pygame.draw.rect(screen, button_color, button_rect)
     text_surface = font.render(text, True, text_color)
     screen.blit(text_surface, (button_rect.centerx - text_surface.get_width() // 2,
-                               button_rect.centery - text_surface.get_height() // 2))
+                            button_rect.centery - text_surface.get_height() // 2))
 
 def draw_quit_button(screen, quit_center, radius, font, text_color, button_color):
     """Draw the round 'Quitter' button."""
@@ -298,7 +298,7 @@ def process_move(gomoku, row, col):
             - is_valid (bool): True si le coup est valide, False sinon.
             - forbidden_message (str): Message d'erreur si le coup est interdit.
     """
-    if not gomoku.check_capture_and_update(row, col):
+    if not gomoku._check_capture_and_update(row, col):
         if gomoku.is_double_three(row, col):
             return False, f"Mouvement interdit : Double trois détecté"
     return True, None
@@ -424,7 +424,7 @@ def render_game_ui():
                     best_move = ai.find_best_move(player=ia_player)
                     if best_move:
                         row, col = best_move
-                        gomoku.board[row, col] = gomoku.current_player
+                        # gomoku.board[row, col] = gomoku.current_player
 
                         # MAJ time
                         if turn_start_time:
@@ -433,14 +433,16 @@ def render_game_ui():
                             player_times[gomoku.current_player]["last_time"] = turn_duration
                             turn_start_time = None
 
-                        is_valid, forbidden_message = process_move(gomoku, row, col)
+                        # is_valid, forbidden_message = process_move(gomoku, row, col)
+                        is_valid = gomoku.process_move(row, col)
                         if not is_valid:
-                            gomoku.board[row, col] = PlayerToken.EMPTY.value
+                            # gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
 
-                        game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
-                            gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
-                        )
+                        # game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
+                        #     gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
+                        # )
+                        
 
                 else:
                     # time start
@@ -461,14 +463,10 @@ def render_game_ui():
 
                                 if 0 <= row < board_size and 0 <= col < board_size:
                                     if gomoku.board[row, col] == PlayerToken.EMPTY.value:
-                                        gomoku.board[row, col] = gomoku.current_player
-
-                                        is_valid, forbidden_message = process_move(gomoku, row, col)
+                                        is_valid = gomoku.process_move(row, col)
                                         if not is_valid:
                                             message_start_time = time.time()
-                                            gomoku.board[row, col] = PlayerToken.EMPTY.value
                                             continue
-
                                         # MAJ time
                                         if turn_start_time:
                                             turn_duration = time.time() - turn_start_time
@@ -476,9 +474,10 @@ def render_game_ui():
                                             player_times[gomoku.current_player]["last_time"] = turn_duration
                                             turn_start_time = None
 
-                                        game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
-                                            gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
-                                        )
+                                        # game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
+                                        #     gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
+                                        # )
+                                        
 
                 if game_over and not exit_game:
                     action = end_game_menu(winner)

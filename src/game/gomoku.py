@@ -43,6 +43,7 @@ class Gomoku:
 
 	### RULES AND GAME LOGIC ###
 	#NOTE We shoud use only this function to play the game
+
 	def process_move(self, row: int, col: int) -> bool:
 		"""
 		Processes a move by the current player at the specified row and column.
@@ -52,8 +53,8 @@ class Gomoku:
 		self.board[row, col] = self.current_player
 
 		# Check for captures and update the board
-		if not gomoku_copy.check_capture_and_update(row, col): #TODO pass check_capture_and_update as a private method
-			if gomoku_copy.is_double_three(row, col): #TODO pass is_double_three as a private method
+		if not self._check_capture_and_update(row, col): #TODO pass check_capture_and_update as a private method
+			if self.is_double_three(row, col): #TODO pass is_double_three as a private method
 				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
 				self._undo_move(row, col)
 				return False
@@ -61,7 +62,9 @@ class Gomoku:
 		#TODO Check for win condition
 
 		# Switch to the next player
+		print(f"Joueur actuel : {self.current_player}")
 		self.current_player = -self.current_player
+		print(f"Joueur suivant : {self.current_player}")
 
 		return True
  
@@ -74,7 +77,7 @@ class Gomoku:
 		return 0 <= row < self.board_size and 0 <= col < self.board_size
 
 	#NOTE This function work 
-	def check_capture_and_update(self, row : int, col : int) -> bool:
+	def _check_capture_and_update(self, row : int, col : int) -> bool:
 		"""Check for captures and update the board.
   		Le mouvement a déjà été effectué, row et col sont les positions du mouvement.
 		Cette fonction update le board par contre en cas de capture."""
@@ -126,7 +129,7 @@ class Gomoku:
 		gomoku_copy.board[row, col] = gomoku_copy.current_player
 
 		# Si pas de capture, il faut vérifier le double-trois
-		if not gomoku_copy.check_capture_and_update(row, col):
+		if not gomoku_copy._check_capture_and_update(row, col):
 			if gomoku_copy.is_double_three(row, col):
 				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
 				self._undo_move(row, col)

@@ -138,7 +138,7 @@ class GomokuAI:
             for row, col in moves:
                 gomoku_copy = self.gomoku.copy()
                 gomoku_copy.board[row, col] = player
-                gomoku_copy.check_capture_and_update(row, col)
+                gomoku_copy._check_capture_and_update(row, col)
 
                 eval = self.minimax(depth - 1, False, alpha, beta, player)
                 max_eval = max(max_eval, eval)
@@ -151,7 +151,7 @@ class GomokuAI:
             for row, col in moves:
                 gomoku_copy = self.gomoku.copy()
                 gomoku_copy.board[row, col] = -player
-                gomoku_copy.check_capture_and_update(row, col)
+                gomoku_copy._check_capture_and_update(row, col)
 
                 eval = self.minimax(depth - 1, True, alpha, beta, player)
                 min_eval = min(min_eval, eval)
@@ -175,7 +175,7 @@ class GomokuAI:
         for row, col in moves:
             gomoku_copy = self.gomoku.copy()
             gomoku_copy.board[row, col] = player
-            gomoku_copy.check_capture_and_update(row, col)
+            gomoku_copy._check_capture_and_update(row, col)
 
             score = self.minimax(self.depth - 1, False, float('-inf'), float('inf'), player)
             print(f"Score pour le mouvement ({row}, {col}) : {score}")
