@@ -284,7 +284,7 @@ def is_line_occupied(board, line):
             return True
     return False
 
-def process_move(gomoku, row, col):
+def processs_move(gomoku, row, col):
     """
     Vérifie les captures et les mouvements interdits pour un coup donné.
 
@@ -298,9 +298,9 @@ def process_move(gomoku, row, col):
             - is_valid (bool): True si le coup est valide, False sinon.
             - forbidden_message (str): Message d'erreur si le coup est interdit.
     """
-    if not gomoku.check_capture_and_update({"row": row, "col": col}):
-        forbidden, message = gomoku.is_move_forbidden({"row": row, "col": col})
-        if forbidden:
+    if not gomoku._check_capture_and_update(row, col):
+        forbidden, line, message = gomoku.process_move(row=row, col=col, code=2)
+        if not forbidden:
             return False, f"Mouvement interdit : {message}"
     return True, None
 
@@ -329,7 +329,7 @@ def process_win(gomoku, row, col, coup_special, special_turn_owner, break_line_5
     winner = None
     game_over = False
 
-    win_detected, line, win_type = gomoku.is_win({"row": row, "col": col})
+    win_detected, line, win_type = gomoku.process_move(row=row, col=col, code=1)
 
     if win_type == "win_five":
         print("Victoire par ligne de 5 !")
@@ -420,8 +420,6 @@ def render_game_ui():
                 pygame.display.flip()
 
                 if game_mode in ["normal", "special"] and gomoku.current_player == ia_player:
-                # if game_mode == "normal" and gomoku.current_player == PlayerToken.WHITE.value: # normale sans le player random
-                    # random_move = get_random_move(gomoku)
                     # time start
                     if not turn_start_time:
                         turn_start_time = time.time()
@@ -437,7 +435,7 @@ def render_game_ui():
                             player_times[gomoku.current_player]["last_time"] = turn_duration
                             turn_start_time = None
 
-                        is_valid, forbidden_message = process_move(gomoku, row, col)
+                        is_valid, forbidden_message = processs_move(gomoku, row, col)
                         if not is_valid:
                             gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
@@ -467,7 +465,7 @@ def render_game_ui():
                                     if gomoku.board[row, col] == PlayerToken.EMPTY.value:
                                         gomoku.board[row, col] = gomoku.current_player
 
-                                        is_valid, forbidden_message = process_move(gomoku, row, col)
+                                        is_valid, forbidden_message = processs_move(gomoku, row, col)
                                         if not is_valid:
                                             message_start_time = time.time()
                                             gomoku.board[row, col] = PlayerToken.EMPTY.value

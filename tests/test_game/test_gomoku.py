@@ -21,10 +21,10 @@ def test_double_three_rule():
     game.board[4, 5] = game.current_player
     game.board[3, 5] = game.current_player
     # Double trois à 5,5 est interdit
-    forbidden, message = game.is_move_forbidden(move_pos)
+    forbidden, line, message = game.process_move(row=5, col=5, code=2)
     print(forbidden, message)
-    assert forbidden is True
-    assert message == "Mouvement interdit : double-trois détecté"
+    assert forbidden is False
+    assert message == "règle du double-trois"
 
 def test_no_double_three():
     """Test a valid move that should not be restricted by the double-three rule."""
@@ -35,9 +35,9 @@ def test_no_double_three():
     game.board[4, 5] = -game.current_player
     game.board[6, 5] = -game.current_player
     # Ce mouvement ne crée pas de double-trois et devrait être permis
-    forbidden, message = game.is_move_forbidden(move_pos)
-    assert forbidden is False
-    assert message == "Mouvement autorisé"
+    forbidden, line, message = game.process_move(row=5, col=5, code=2)
+    assert forbidden is True
+    # assert message == "Mouvement autorisé"
 
 def test_capture_rule():
     """Test capturing opponent stones."""
@@ -47,7 +47,7 @@ def test_capture_rule():
     game.board[5, 6] = -game.current_player
     game.board[5, 7] = -game.current_player
     move_pos = {"row": 5, "col": 8}
-    game.check_capture_and_update(move_pos)
+    game._check_capture_and_update(row=5, col=8)
     # Les pierres capturées sont supprimées et le joueur actuel reçoit des points
     assert game.board[5, 6] == 0
     assert game.board[5, 7] == 0
@@ -60,8 +60,8 @@ def test_no_capture():
     game.board[5, 5] = game.current_player
     game.board[5, 6] = -game.current_player
     game.board[5, 7] = game.current_player
-    move_pos = {"row": 5, "col": 8}
-    captured = game.check_capture_and_update(move_pos)
+    # move_pos = {"row": 5, "col": 8}
+    captured = game._check_capture_and_update(row=5, col=8)
     assert captured is False
     assert game.board[5, 6] == -game.current_player
     assert game.black_player_pebbles_taken == 0

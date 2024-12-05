@@ -31,9 +31,9 @@ def is_move_valid(gomoku, row, col):
     gomoku_copy = gomoku.copy()
     
     gomoku_copy.board[row, col] = gomoku_copy.current_player
-    if not gomoku_copy.check_capture_and_update({"row": row, "col": col}):
-        forbidden, message = gomoku_copy.is_move_forbidden({"row": row, "col": col})
-        if forbidden:
+    if not gomoku_copy._check_capture_and_update(row, col):
+        forbidden, line, message = gomoku_copy.process_move(row=row, col=col, code=2)
+        if not forbidden:
             print(f"Mouvement interdit ({row}, {col}) : {message}")
             return False
 
@@ -100,9 +100,9 @@ class GomokuAI:
         gomoku_copy.board[row, col] = gomoku_copy.current_player
 
         # Vérifier les captures et les mouvements interdits
-        if not gomoku_copy.check_capture_and_update({"row": row, "col": col}):
-            forbidden, message = gomoku_copy.is_move_forbidden({"row": row, "col": col})
-            if forbidden:
+        if not gomoku_copy._check_capture_and_update(row, col):
+            forbidden, line, message = gomoku_copy.process_move(row=row, col=col, code=2)
+            if not forbidden:
                 print(f"Mouvement interdit ({row}, {col}) : {message}")
                 return False
 
@@ -151,7 +151,7 @@ class GomokuAI:
                     # Si une ligne de 5 est détectée, vérifier la possibilité de capture
                     if count == 5 and len(line_coordinates) == 5:
                         line_coordinates = line_coordinates[:5]  # Garder uniquement 5 points
-                        capture_possible, capture_coords = self.gomoku.check_capture_on_five(line_coordinates)
+                        capture_possible, capture_coords = self.gomoku._check_capture_on_five(line_coordinates)
                         if capture_possible:
                             print(f"Capture sur une ligne de 5 détectée : {line_coordinates}")
                             # Ajouter le coup de capture aux priorités
@@ -162,13 +162,13 @@ class GomokuAI:
                     # Priorité 3 : Protéger une ligne de 2 de l'IA
                     original_player = self.gomoku.current_player
                     self.gomoku.current_player = -self.gomoku.current_player
-                    capture_possible, capture_coords = self.gomoku.check_possible_capture()  # Récupère le booléen et les coordonnées
+                    capture_possible, capture_coords = self.gomoku._check_possible_capture()  # Récupère le booléen et les coordonnées
                     self.gomoku.current_player = original_player
                     if capture_possible:
                         priority_moves["protect_two"].append(capture_coords)
 
                     # Priorité 4 : Capture possible
-                    capture_possible, capture_coords = self.gomoku.check_possible_capture()  # Réutilisation pour une capture générique
+                    capture_possible, capture_coords = self.gomoku._check_possible_capture()  # Réutilisation pour une capture générique
                     if capture_possible:
                         priority_moves["capture"].append(capture_coords)
 
@@ -222,7 +222,7 @@ class GomokuAI:
             for row, col in moves:
                 gomoku_copy = self.gomoku.copy()
                 gomoku_copy.board[row, col] = player
-                gomoku_copy.check_capture_and_update({"row": row, "col": col})
+                gomoku_copy._check_capture_and_update(row, col)
 
                 eval = self.minimax(depth - 1, False, alpha, beta, player)
                 max_eval = max(max_eval, eval)
@@ -235,7 +235,7 @@ class GomokuAI:
             for row, col in moves:
                 gomoku_copy = self.gomoku.copy()
                 gomoku_copy.board[row, col] = -player
-                gomoku_copy.check_capture_and_update({"row": row, "col": col})
+                gomoku_copy._check_capture_and_update(row, col)
 
                 eval = self.minimax(depth - 1, True, alpha, beta, player)
                 min_eval = min(min_eval, eval)
@@ -259,7 +259,7 @@ class GomokuAI:
         for row, col in moves:
             gomoku_copy = self.gomoku.copy()
             gomoku_copy.board[row, col] = player
-            gomoku_copy.check_capture_and_update({"row": row, "col": col})
+            gomoku_copy._check_capture_and_update(row, col)
 
             score = self.minimax(self.depth - 1, False, float('-inf'), float('inf'), player)
             print(f"Score pour le mouvement ({row}, {col}) : {score}")
