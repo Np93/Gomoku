@@ -4,6 +4,6 @@ repos:
       - id: pytest
         name: Run pytest
         entry: pytest
-        language: system
+        language: python
         always_run: true
         pass_filenames: false
