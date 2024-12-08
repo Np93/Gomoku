@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: /home/jolivier/miniconda3/envs/gomoku/bin/python -m pytest
+        entry: python -m pytest
         language: system
         types: [python]
         always_run: true
