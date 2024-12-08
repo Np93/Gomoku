@@ -58,7 +58,17 @@ class Gomoku:
 		"""
 		Processes a move by the current player at the specified row and column.
 		"""
-		print(f"Joueur {self.current_player} joue en ({placed_row}, {placed_col})")
+  
+		#check for forced move
+		if len(self.forced_moves) > 0:
+			if (placed_row, placed_col) not in self.forced_moves:
+				print(f"Invalid move ({placed_row}, {placed_col}): Forced move required")
+				print(f"Forced moves: {self.forced_moves}")
+				return False
+
+		#Reset forced moves in case the player made a valid move
+		self.forced_moves = []
+
 		# Update the board with the current player's move
 		self.board[placed_row, placed_col] = self.current_player
 
@@ -69,12 +79,10 @@ class Gomoku:
 				self._undo_move(placed_row, placed_col)
 				return False
 
-
 		if self._is_5_pebble_aligned(placed_row, placed_col):
 			print("A player has at least 5 pebbles aligned")
 			if self._is_5_pebble_aligned_breakable(placed_row, placed_col):
 				print(f"The opponent can break the line of 5 pebbles")
-				self.game_over = False
 			else:
 				print("The player wins")
 				self.game_over = True
@@ -269,9 +277,11 @@ class Gomoku:
 			# Check if the original player can still win
 			Gomoku_copy.current_player = self.current_player
 			if not Gomoku_copy._is_5_pebble_aligned(placed_row, placed_col):
-				return True
+				self.forced_moves.append(move)
 
-		return False
+		# Return True if at least one move can break the line
+		print(f"Moves to break the line: {self.forced_moves}")
+		return len(self.forced_moves) > 0
 
 
 	#NOTE TBC
