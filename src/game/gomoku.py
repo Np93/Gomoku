@@ -28,7 +28,7 @@ class Gomoku:
 		return new_copy
 
 
-	### UTILS ###
+	### Public utils ###
 	def draw_board(self):
 		"""Draw the Gomoku board."""
 		header = "   " + " ".join(f"{i:2}" for i in range(self.board_size))
@@ -83,6 +83,7 @@ class Gomoku:
 
 		return True
 
+	### Priavte utils ###
 	def _change_player(self) -> None:
 		"""Change the current player."""
 		self.current_player = -self.current_player
