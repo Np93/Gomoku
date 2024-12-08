@@ -53,7 +53,7 @@ class Gomoku:
 
 		# Check for captures and update the board
 		if not self._check_capture_and_update(placed_row, placed_col):
-			if self.is_double_three(placed_row, placed_col): #TODO pass is_double_three as a private method
+			if self.is_double_three(placed_row, placed_col): #TODO pass is_double_three as a private method and fix it
 				print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté")
 				self._undo_move(placed_row, placed_col)
 				return False

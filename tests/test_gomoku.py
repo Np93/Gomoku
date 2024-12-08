@@ -1,0 +1,200 @@
+import pytest
+from src.game.gomoku import Gomoku
+from src.game.playerTokens import PlayerToken
+
+class TestCaptureMechanism:
+
+    @pytest.fixture # This decorator is used to set up the game instance before each test
+    def setup_game(self):
+        """Set up a basic Gomoku game instance."""
+        return Gomoku()
+
+    def test_capture_horizontal(self, setup_game):
+        game = setup_game
+        game.board[4, 3] = PlayerToken.WHITE.value
+        game.board[4, 4] = PlayerToken.WHITE.value
+        game.board[4, 5] = PlayerToken.BLACK.value
+
+        game.current_player = PlayerToken.BLACK.value
+        assert game._check_capture_and_update(4, 2) is True
+        assert game.board[4, 3] == 0
+        assert game.board[4, 4] == 0
+        assert game.black_player_pebbles_taken == 2
+
+    def test_no_capture_vertical(self, setup_game):
+        game = setup_game
+        game.board[3, 4] = PlayerToken.WHITE.value
+        game.board[4, 4] = PlayerToken.WHITE.value
+        game.board[6, 4] = PlayerToken.BLACK.value
+
+        game.current_player = PlayerToken.BLACK.value
+        assert game._check_capture_and_update(5, 4) is False
+        assert game.board[3, 4] == PlayerToken.WHITE.value
+        assert game.board[4, 4] == PlayerToken.WHITE.value
+        assert game.black_player_pebbles_taken == 0
+
+    def test_capture_diagonal(self, setup_game):
+        game = setup_game
+        game.board[3, 3] = PlayerToken.WHITE.value
+        game.board[4, 4] = PlayerToken.WHITE.value
+        game.board[5, 5] = PlayerToken.BLACK.value
+
+        game.current_player = PlayerToken.BLACK.value
+        assert game._check_capture_and_update(2, 2) is True
+        assert game.board[3, 3] == 0
+        assert game.board[4, 4] == 0
+        assert game.black_player_pebbles_taken == 2
+
+    def test_edge_case_out_of_bounds(self, setup_game):
+        game = setup_game
+        game.board[0, 1] = PlayerToken.WHITE.value
+        game.board[0, 2] = PlayerToken.WHITE.value
+        game.board[0, 3] = PlayerToken.BLACK.value
+
+        game.current_player = PlayerToken.BLACK.value
+        assert game._check_capture_and_update(0, 0) is True
+        assert game.board[0, 1] == 0
+        assert game.board[0, 2] == 0
+        assert game.black_player_pebbles_taken == 2
+
+    def test_no_false_positive(self, setup_game):
+        game = setup_game
+        game.board[4, 3] = PlayerToken.WHITE.value
+        game.board[4, 4] = PlayerToken.BLACK.value
+        game.board[4, 5] = PlayerToken.WHITE.value
+
+        game.current_player = PlayerToken.BLACK.value
+        assert game._check_capture_and_update(4, 2) is False
+        assert game.board[4, 3] == PlayerToken.WHITE.value
+        assert game.board[4, 4] == PlayerToken.BLACK.value
+        assert game.board[4, 5] == PlayerToken.WHITE.value
+        assert game.black_player_pebbles_taken == 0
+
+import pytest
+from src.game.gomoku import Gomoku
+from src.game.playerTokens import PlayerToken
+import numpy as np
+
+
+import pytest
+from src.game.gomoku import Gomoku
+from src.game.playerTokens import PlayerToken
+import numpy as np
+
+
+class TestFivePebbleAlignment:
+
+    @pytest.fixture
+    def setup_game(self):
+        """Set up a basic Gomoku game instance."""
+        return Gomoku()
+
+    def test_horizontal_five_in_row(self, setup_game):
+        game = setup_game
+        # Place a horizontal line of 5 pebbles
+        game.board[5, 5] = PlayerToken.BLACK.value
+        game.board[5, 6] = PlayerToken.BLACK.value
+        game.board[5, 7] = PlayerToken.BLACK.value
+        game.board[5, 8] = PlayerToken.BLACK.value
+        game.current_player = PlayerToken.BLACK.value
+
+        assert game._is_5_pebble_aligned(5, 4) is True
+
+    def test_vertical_five_in_row(self, setup_game):
+        game = setup_game
+        # Place a vertical line of 5 pebbles
+        game.board[5, 5] = PlayerToken.WHITE.value
+        game.board[6, 5] = PlayerToken.WHITE.value
+        game.board[7, 5] = PlayerToken.WHITE.value
+        game.board[8, 5] = PlayerToken.WHITE.value
+        game.current_player = PlayerToken.WHITE.value
+
+        assert game._is_5_pebble_aligned(4, 5) is True
+
+    def test_diagonal_five_in_row(self, setup_game):
+        game = setup_game
+        # Place a diagonal line of 5 pebbles (positive slope)
+        game.board[5, 5] = PlayerToken.BLACK.value
+        game.board[6, 6] = PlayerToken.BLACK.value
+        game.board[7, 7] = PlayerToken.BLACK.value
+        game.board[8, 8] = PlayerToken.BLACK.value
+        game.current_player = PlayerToken.BLACK.value
+
+        assert game._is_5_pebble_aligned(4, 4) is True
+
+    def test_anti_diagonal_five_in_row(self, setup_game):
+        game = setup_game
+        # Place an anti-diagonal line of 5 pebbles (negative slope)
+        game.board[5, 9] = PlayerToken.WHITE.value
+        game.board[6, 8] = PlayerToken.WHITE.value
+        game.board[7, 7] = PlayerToken.WHITE.value
+        game.board[8, 6] = PlayerToken.WHITE.value
+        game.current_player = PlayerToken.WHITE.value
+
+        assert game._is_5_pebble_aligned(4, 10) is True
+
+    def test_no_alignment(self, setup_game):
+        game = setup_game
+        # Place an incomplete line of 4 pebbles
+        game.board[5, 5] = PlayerToken.BLACK.value
+        game.board[5, 6] = PlayerToken.BLACK.value
+        game.board[5, 7] = PlayerToken.BLACK.value
+        game.current_player = PlayerToken.BLACK.value
+
+        assert game._is_5_pebble_aligned(5, 8) is False
+
+    def test_edge_case_board_boundary(self, setup_game):
+        game = setup_game
+        # Place a line near the board's edge
+        game.board[0, 15] = PlayerToken.BLACK.value
+        game.board[0, 16] = PlayerToken.BLACK.value
+        game.board[0, 17] = PlayerToken.BLACK.value
+        game.board[0, 18] = PlayerToken.BLACK.value
+        game.current_player = PlayerToken.BLACK.value
+
+        assert game._is_5_pebble_aligned(0, 14) is True
+
+    def test_overlapping_lines(self, setup_game):
+        game = setup_game
+        # Place overlapping horizontal and vertical lines
+        game.board[5, 5] = PlayerToken.BLACK.value
+        game.board[5, 6] = PlayerToken.BLACK.value
+        game.board[5, 7] = PlayerToken.BLACK.value
+        game.board[5, 8] = PlayerToken.BLACK.value
+        game.board[5, 9] = PlayerToken.BLACK.value
+
+        game.board[4, 7] = PlayerToken.BLACK.value
+        game.board[6, 7] = PlayerToken.BLACK.value
+        game.board[7, 7] = PlayerToken.BLACK.value
+        game.board[8, 7] = PlayerToken.BLACK.value
+
+        game.current_player = PlayerToken.BLACK.value
+
+        # Should detect horizontal alignment
+        assert game._is_5_pebble_aligned(5, 7) is True
+
+    def test_mixed_tokens(self, setup_game):
+        game = setup_game
+        # Place mixed tokens breaking the alignment
+        game.board[5, 5] = PlayerToken.BLACK.value
+        game.board[5, 6] = PlayerToken.BLACK.value
+        game.board[5, 7] = PlayerToken.WHITE.value
+        game.board[5, 8] = PlayerToken.BLACK.value
+        game.board[5, 9] = PlayerToken.BLACK.value
+        game.current_player = PlayerToken.BLACK.value
+
+        assert game._is_5_pebble_aligned(5, 4) is False
+
+    def test_more_than_five_in_row(self, setup_game):
+        game = setup_game
+        # Place a horizontal line of 7 pebbles
+        game.board[5, 5] = PlayerToken.BLACK.value
+        game.board[5, 6] = PlayerToken.BLACK.value
+        game.board[5, 7] = PlayerToken.BLACK.value
+        game.board[5, 8] = PlayerToken.BLACK.value
+        game.board[5, 9] = PlayerToken.BLACK.value
+        game.board[5, 10] = PlayerToken.BLACK.value
+        game.board[5, 11] = PlayerToken.BLACK.value
+        game.current_player = PlayerToken.BLACK.value
+
+        assert game._is_5_pebble_aligned(5, 7) is True

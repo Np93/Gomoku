@@ -444,6 +444,10 @@ def render_game_ui():
                         #     gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
                         # )
                         
+                        if gomoku.game_over:
+                            game_over = True
+                            winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+
 
                 else:
                     # time start
@@ -478,6 +482,11 @@ def render_game_ui():
                                         # game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
                                         #     gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
                                         # )
+                                        
+                                        if gomoku.game_over:
+                                            game_over = True
+                                            winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+
                                         
 
                 if game_over and not exit_game:
