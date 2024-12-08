@@ -1,9 +1,10 @@
 import pygame
+import time
+import random
+
 from src.game.gomoku import Gomoku
 from src.game.playerTokens import PlayerToken
 from src.algo.algo import GomokuAI
-import time
-import random
 
 # Initialize Pygame
 pygame.init()

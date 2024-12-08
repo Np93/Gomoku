@@ -53,7 +53,7 @@ class Gomoku:
 		self.board[row, col] = self.current_player
 
 		# Check for captures and update the board
-		if not self._check_capture_and_update(row, col): #TODO pass check_capture_and_update as a private method
+		if not self._check_capture_and_update(row, col):
 			if self.is_double_three(row, col): #TODO pass is_double_three as a private method
 				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
 				self._undo_move(row, col)
@@ -61,11 +61,7 @@ class Gomoku:
 
 		#TODO Check for win condition
 
-		# Switch to the next player
-		print(f"Joueur actuel : {self.current_player}")
 		self.current_player = -self.current_player
-		print(f"Joueur suivant : {self.current_player}")
-
 		return True
  
 	def _undo_move(self, row: int, col: int) -> None:

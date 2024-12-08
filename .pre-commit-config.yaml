@@ -2,8 +2,9 @@ repos:
   - repo: local
     hooks:
       - id: pytest
-        name: Run pytest
-        entry: python -m pytest
+        name: pytest
+        entry: /home/jolivier/miniconda3/envs/gomoku/bin/python -m pytest
         language: system
+        types: [python]
         always_run: true
         pass_filenames: false
