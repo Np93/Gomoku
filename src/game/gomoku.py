@@ -1,100 +1,315 @@
-
 import numpy as np
-
 from src.game.playerTokens import PlayerToken
-
 
 class Gomoku:
 	"""Gomoku game class."""
 
-	def __init__(self, board_size=19, player = PlayerToken.BLACK.value):
+	def __init__(self):
 		"""Initialize Gomoku game."""
+		#NOTE ALL ATTRIBUTES ARE CONSIDERED AS PRIVATE EVEN WITHOUT THE UNDERSCORE
 		super().__init__()
-		self.board_size = board_size
-		self.board = np.zeros((board_size, board_size), dtype='int8')
-		self.current_player = player
-		self.white_player_pebbles_taken = 0
-		self.black_player_pebbles_taken = 0
-		self.forced_moves = []
-		self.game_over = False
+		self.board_size: int = 19
+		self.board: np.ndarray = np.zeros((self.board_size, self.board_size), dtype=int)
+		self.current_player: int = PlayerToken.BLACK.value
+		self.white_player_pebbles_taken: int = 0
+		self.black_player_pebbles_taken: int = 0
+		self.forced_moves: list = []
+		self.game_over: bool = False
+
+	def copy(self) -> "Gomoku":
+		"""Create a copy of the current game state."""
+		new_copy = Gomoku()
+		new_copy.board = np.copy(self.board)
+		new_copy.current_player = self.current_player
+		new_copy.white_player_pebbles_taken = self.white_player_pebbles_taken
+		new_copy.black_player_pebbles_taken = self.black_player_pebbles_taken
+		new_copy.forced_moves = self.forced_moves.copy()  # Ensure a separate list
+		new_copy.game_over = self.game_over
+		return new_copy
+
+
+	### Public utils ###
+	def draw_board(self):
+		"""Draw the Gomoku board."""
+		header = "   " + " ".join(f"{i:2}" for i in range(self.board_size))
+		print(header)
+		for i in range(self.board_size):
+			row = f"{i:2} " + " ".join(
+				"B" if self.board[i, j] == PlayerToken.BLACK.value else
+				"W" if self.board[i, j] == PlayerToken.WHITE.value else
+				"." for j in range(self.board_size)
+			)
+			print(row)
+
+	def get_all_possible_moves(self, player: int) -> list:
+		"""Get all possible moves for the given player."""
+		possible_moves = []
+
+		for row in range(self.board_size):
+			for col in range(self.board_size):
+				if self.board[row, col] == PlayerToken.EMPTY.value:
+					possible_moves.append((row, col))
+
+		return possible_moves
 
 	### RULES AND GAME LOGIC ###
-
-	def copy(self):
-		"""Create a copy of the current game state."""
-		copy = Gomoku(self.board_size)
-		copy.board = np.copy(self.board)
-		copy.current_player = self.current_player
-		copy.white_player_pebbles_taken = self.white_player_pebbles_taken
-		copy.black_player_pebbles_taken = self.black_player_pebbles_taken
-		copy.forced_moves = self.forced_moves
-		copy.game_over = self.game_over
-		return copy
-
-	def is_move_forbidden(self, move_pos):
-		"""Check if the move is forbidden based on Gomoku rules."""
-		row, col = move_pos['row'], move_pos['col']
-
-		# Check for the double-three rule
-		if self.count_double_three(move_pos):
-			self.board[row][col] = 0  # Remove the temporary stone
-			return True, "règle du double-trois"  # The move is forbidden due to double-three
-
-		# if self.check_forbidden_pattern(move_pos):
-		# 	self.board[row][col] = 0
-		# 	return True, "capture automatique"
-
-		return False, "Mouvement autorisé"  # The move is legal if no captures and not double-three
-
-	def check_forbidden_pattern(self, move_pos):
+	#NOTE We shoud use only this function to play the game
+	def process_move(self, placed_row: int, placed_col: int) -> bool:
 		"""
-		Vérifie si le mouvement proposé crée une configuration interdite 
-		(adversaire, joueur, vide, adversaire).
-
-		Args:
-			move_pos (dict): Position du mouvement proposé sous la forme {'row': int, 'col': int}.
-
-		Returns:
-			bool: True si le mouvement crée une configuration interdite, False sinon.
+		Processes a move by the current player at the specified row and column.
 		"""
-		row, col = move_pos['row'], move_pos['col']
-		opponent = -self.current_player  # Token de l'adversaire
-		player = self.current_player  # Token du joueur actuel
+  
+		#check for forced move
+		if len(self.forced_moves) > 0:
+			if (placed_row, placed_col) not in self.forced_moves:
+				print(f"Invalid move ({placed_row}, {placed_col}): Forced move required")
+				print(f"Forced moves: {self.forced_moves}")
+				return False
+
+		#Reset forced moves in case the player made a valid move
+		self.forced_moves = []
+
+		# Update the board with the current player's move
+		self.board[placed_row, placed_col] = self.current_player
+
+		# Check for captures and update the board
+		if not self._check_capture_and_update(placed_row, placed_col):
+			if self.is_double_three(placed_row, placed_col): #TODO pass is_double_three as a private method and fix it
+				print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté")
+				self._undo_move(placed_row, placed_col)
+				return False
+
+		if self._is_5_pebble_aligned(placed_row, placed_col):
+			print("A player has at least 5 pebbles aligned")
+			if self._is_5_pebble_aligned_breakable(placed_row, placed_col):
+				print(f"The opponent can break the line of 5 pebbles")
+			else:
+				print("The player wins")
+				self.game_over = True
+				return True
+
+		self._change_player()
+
+		return True
+
+	### Priavte utils ###
+	def _change_player(self) -> None:
+		"""Change the current player."""
+		self.current_player = -self.current_player
+
+	def _undo_move(self, placed_row: int, placed_col: int) -> None:
+		"""Undo a move on the board."""
+		self.board[placed_row, placed_col] = PlayerToken.EMPTY.value
+
+	def _is_within_bounds(self, placed_row : int, placed_col : int) -> bool:
+		"""Check if a position is within the board bounds."""
+		return 0 <= placed_row < self.board_size and 0 <= placed_col < self.board_size
+
+	### Captures ###
+	def _check_capture_and_update(self, placed_row: int, placed_col: int) -> bool:
+		"""
+		Check if the most recent move by the current player results in captures of opponent stones.
+
+		A capture occurs if, starting from the placed stone's position, there are exactly `n` (for n=2 or n=3) 
+		consecutive opponent stones in a straight line (horizontal, vertical, or diagonal), followed by a stone 
+		of the current player, forming a pattern like: CurrentPlayer - Opponent - Opponent - CurrentPlayer.
+
+		If such a pattern is found, all the in-between opponent stones are removed from the board, and 
+		the current player's capture count is increased accordingly.
 		
-		# Directions : horizontale, verticale et diagonales
+		Parameters
+		----------
+		placed_row : int
+			The row index of the last placed stone.
+		placed_col : int
+			The column index of the last placed stone.
+
+		Returns
+		-------
+		bool
+			True if at least one capture was made, False otherwise.
+		"""
+
+		# Directions represent vectors in the format (d_row, d_col):
+		# Horizontal: (0, 1)
+		# Vertical:   (1, 0)
+		# Diagonals:  (1, 1) and (1, -1)
+		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+		capture_occurred = False
+		opponent_token = -self.current_player
+
+		for d_row, d_col in directions:
+			# Check in both the 'forward' and 'backward' directions along this line.
+			for direction_sign in [1, -1]:
+				# Check for patterns of length n, where n is currently set to 2 (and could be extended if needed)
+				for num_opponent_stones in range(2, 3):  
+					captured_stones_positions = []
+
+					# Verify that exactly 'num_opponent_stones' opponent stones exist in a line
+					# following the placed stone.
+					for offset in range(1, num_opponent_stones + 1):
+						check_row = placed_row + direction_sign * d_row * offset
+						check_col = placed_col + direction_sign * d_col * offset
+
+						# Ensure we stay within board bounds
+						if 0 <= check_row < self.board_size and 0 <= check_col < self.board_size:
+							if self.board[check_row, check_col] == opponent_token:
+								# Accumulate opponent stone positions that may be captured
+								captured_stones_positions.append((check_row, check_col))
+							else:
+								# If we don't find an opponent stone, break early
+								break
+						else:
+							# Out of board bounds
+							break
+
+					# If we found the exact number of consecutive opponent stones, 
+					# check for a current player stone immediately after them.
+					if len(captured_stones_positions) == num_opponent_stones:
+						next_row = placed_row + direction_sign * d_row * (num_opponent_stones + 1)
+						next_col = placed_col + direction_sign * d_col * (num_opponent_stones + 1)
+
+						if (0 <= next_row < self.board_size and 
+							0 <= next_col < self.board_size and 
+							self.board[next_row, next_col] == self.current_player):
+
+							# Confirmed capture pattern found: CurrentPlayer - Opponent(s) - CurrentPlayer
+							capture_occurred = True
+
+							# Remove the captured opponent stones from the board
+							for stone_row, stone_col in captured_stones_positions:
+								self.board[stone_row, stone_col] = 0
+
+							# Update the capture count for the current player
+							if self.current_player == PlayerToken.BLACK.value:
+								self.black_player_pebbles_taken += len(captured_stones_positions)
+							else:
+								self.white_player_pebbles_taken += len(captured_stones_positions)
+
+		return capture_occurred
+
+	### VICTORY CONDITIONS ###
+	def _is_5_pebble_aligned(self, placed_row: int, placed_col: int) -> bool:
+		"""
+		Check if placing a pebble at the given position results in a continuous line 
+		of at least five pebbles of the current player's color. This can occur 
+		horizontally, vertically, or along either diagonal.
+		"""
+		current_player_token = self.current_player
 		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
 
-		for dr, dc in directions:
-			for sign in [1, -1]:  # Vérifie dans les deux sens
-				# Crée le motif (adversaire, joueur, vide, adversaire)
-				pattern_positions = [
-					(row + sign * dr * i, col + sign * dc * i) for i in range(-2, 2)
-				]
+		for d_row, d_col in directions:
+			count = 1  # Include the newly placed pebble
 
-				# Vérifie que toutes les positions sont dans les limites
-				if all(self.is_within_bounds(pos) for pos in pattern_positions):
-					stones = [
-						self.board[pattern_positions[i][0], pattern_positions[i][1]]
-						for i in range(4)
-					]
+			# Check in the 'forward' direction
+			row, col = placed_row + d_row, placed_col + d_col
+			while 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row, col] == current_player_token:
+				count += 1
+				row += d_row
+				col += d_col
 
-					# Vérifie si le motif interdit est détecté
-					if (
-						stones[0] == opponent and
-						stones[1] == player and
-						stones[2] == player and  # Case vide où le joueur veut jouer
-						stones[3] == opponent
-					):
-						return True
+			# Check in the 'backward' direction
+			row, col = placed_row - d_row, placed_col - d_col
+			while 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row, col] == current_player_token:
+				count += 1
+				row -= d_row
+				col -= d_col
+
+			if count >= 5:
+				return True
 
 		return False
+		"""
+		Check if placing a pebble at the given position results in one or more continuous lines
+		of at least five pebbles of the current player's color. This can occur horizontally,
+		vertically, or along either diagonal.
 
-	def count_double_three(self, move_pos):
-		"""Check if the move creates a double-three configuration."""
-		row, col = move_pos['row'], move_pos['col']
+		Returns:
+			A list of dictionaries, where each dictionary represents a found line:
+			{
+				'direction': (d_row, d_col),
+				'positions': [(r1, c1), (r2, c2), ...]  # all positions in the line
+			}
+			If no lines of length >= 5 are found, returns an empty list.
+		"""
+		current_player_token = self.current_player
+		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+		found_lines = []
+
+		for d_row, d_col in directions:
+			# Start with the newly placed pebble
+			positions = [(placed_row, placed_col)]
+
+			# Check forward direction
+			row, col = placed_row + d_row, placed_col + d_col
+			while (0 <= row < self.board_size and 0 <= col < self.board_size 
+				and self.board[row, col] == current_player_token):
+				positions.append((row, col))
+				row += d_row
+				col += d_col
+
+			# Check backward direction
+			row, col = placed_row - d_row, placed_col - d_col
+			while (0 <= row < self.board_size and 0 <= col < self.board_size 
+				and self.board[row, col] == current_player_token):
+				positions.insert(0, (row, col))
+				row -= d_row
+				col -= d_col
+
+			if len(positions) >= 5:
+				found_lines.append(positions)
+
+		return found_lines
+
+	def _is_5_pebble_aligned_breakable(self, placed_row: int, placed_col: int) -> bool:
+		"""
+		Check all possible ways the opponent can break a line of five pebbles
+		"""
+
+		moves = self.get_all_possible_moves(-self.current_player)
+
+		for move in moves:
+			# Process the move
+			Gomoku_copy = self.copy()
+			Gomoku_copy.current_player = -self.current_player
+			Gomoku_copy.board[move] = -self.current_player
+			Gomoku_copy._check_capture_and_update(move[0], move[1])
+
+			# Check if the original player can still win
+			Gomoku_copy.current_player = self.current_player
+			if not Gomoku_copy._is_5_pebble_aligned(placed_row, placed_col):
+				self.forced_moves.append(move)
+
+		# Return True if at least one move can break the line
+		print(f"Moves to break the line: {self.forced_moves}")
+		return len(self.forced_moves) > 0
+
+
+	#NOTE TBC
+	@staticmethod
+	def is_move_valid(self, row: int, col: int) -> bool:
+		"""Vérifie si un mouvement est valide selon les règles de Gomoku.
+		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
+
+		# Créer une copie pour simuler le mouvement
+		gomoku_copy = self.copy()
+		gomoku_copy.board[row, col] = gomoku_copy.current_player
+
+		# Si pas de capture, il faut vérifier le double-trois
+		if not gomoku_copy._check_capture_and_update(row, col):
+			if gomoku_copy.is_double_three(row, col):
+				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
+				self._undo_move(row, col)
+				return False
+
+		return True
+
+	#TODO CHECK THIS FUNCTION
+	def is_double_three(self, row: int, col: int) -> bool:
+		"""Check if the move creates a double-three configuration.
+		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
 		threats = 0
 		player = self.current_player
-		opponent = -player
 		color_sequence = []
 		i_pos = 0
 		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
@@ -120,18 +335,16 @@ class Gomoku:
 					color_sequence.insert(0, self.board[r, c])
 				else :
 					break
-			if self.analyze_sequence_for_threats(color_sequence, player, i_pos):
-				print("Threat detected")
+			if self._analyze_sequence_for_threats(color_sequence, player, i_pos):
 				threats += 1
 
 			# Early exit if more than one threat is found (double-three condition)
 			if threats >= 2:
-				print("Double-three detected")
 				return True
 		
 		return False
 
-	def analyze_sequence_for_threats(self, sequence, player, middle_index):
+	def _analyze_sequence_for_threats(self, sequence, player, middle_index):
 		"""Analyze a sequence to find specific open three threats ensuring the played stone is part of the pattern."""
 		seq_len = len(sequence)
 
@@ -226,7 +439,6 @@ class Gomoku:
 				# Si l'adversaire a moins de 8 pierres, vérifie si une capture est possible sur la ligne de 5
 				self.current_player = -self.current_player
 				capture_on_five, empty_pos = self.check_capture_on_five(line)
-				# capture_on_five = self.check_possible_capture()
 				self.current_player = -self.current_player
 				if capture_on_five:
 					print(f"Capture possible sur la ligne de 5 pour {opponent_color}")
@@ -239,87 +451,6 @@ class Gomoku:
 
 		# Si aucune condition de victoire n’est remplie, retourne False
 		return False, [], "no_win"
-
-	def can_opponent_capture(self, line, opponent, player):
-		"""Check if the opponent can capture stones around any stone in the line."""
-		board_size = self.board_size
-		board = self.board
-		directions = [(0, 1), (1, 0), (1, 1), (-1, 1)]  # horizontal, vertical, diagonal right, diagonal left
-
-		forced_moves = []
-
-
-		for stone in line:
-			row, col = stone
-
-			for dr, dc in directions:
-				backward_stone = (row - dr, col - dc)
-				forward_stone = (row + 1 * dr, col + 1 * dc)
-				forward_stone2 = (row + 2 * dr, col + 2 * dc)
-	
-				op_forward_stone = (row + dr, col + dc)
-				op_backward_stone = (row - 1 * dr, col - 1 * dc)
-				op_backward_stone2 = (row - 2 * dr, col - 2 * dc)
-	
-				#check for pattern 0xx0
-				if self.is_within_bounds(forward_stone) and self.is_within_bounds(forward_stone2) and self.is_within_bounds(backward_stone) and self.is_within_bounds(op_backward_stone):
-					if board[backward_stone] == opponent and board[row, col] == player and board[forward_stone] == player and board[forward_stone2] == PlayerToken.EMPTY.value:
-						forced_moves.append(forward_stone2)
-					if board[backward_stone] == PlayerToken.EMPTY.value and board[row, col] == player and board[forward_stone] == player and board[forward_stone2] == opponent:
-						forced_moves.append(backward_stone)
-					if board[op_backward_stone] == opponent and board[row, col] == player and board[forward_stone] == player and board[forward_stone2] == PlayerToken.EMPTY.value:
-						forced_moves.append(forward_stone2)
-					if board[op_backward_stone] == PlayerToken.EMPTY.value and board[row, col] == player and board[forward_stone] == player and board[forward_stone2] == opponent:
-						forced_moves.append(op_backward_stone)
-
-		if len(forced_moves) > 0:
-			#remove duplicates
-			forced_moves = list(set(forced_moves))
-			self.forced_moves = forced_moves
-			print(self.forced_moves)
-			return True
-
-		return False
-
-	def is_within_bounds(self, pos):
-		"""Check if a position is within the board bounds."""
-		return 0 <= pos[0] < self.board_size and 0 <= pos[1] < self.board_size
-
-	def check_capture_and_update(self, move_pos):
-		"""Check for captures and update the board."""
-		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
-		is_captures = False
-		row, col = move_pos["row"], move_pos["col"]
-		opponent = -self.current_player
-
-		for dr, dc in directions:
-			for sign in [1, -1]:  # Check both directions
-				for n in range(2, 3):  # Checking for 2, 3, or 4 stones
-					captured_stones = []
-					# Check for exactly n opponent stones in the direction
-					for i in range(1, n + 1):
-						r, c = row + sign * dr * i, col + sign * dc * i
-						if 0 <= r < self.board_size and 0 <= c < self.board_size:
-							if self.board[r, c] == opponent:
-								captured_stones.append((r, c))
-							else:
-								break
-						else:
-							break
-
-					# Check if these are exactly n opponent stones followed by a current player stone
-					if len(captured_stones) == n:
-						r, c = row + sign * dr * (n + 1), col + sign * dc * (n + 1)
-						if 0 <= r < self.board_size and 0 <= c < self.board_size and self.board[r, c] == self.current_player:
-							# Capture confirmed
-							is_captures = True
-							for cr, cc in captured_stones:
-								self.board[cr, cc] = 0  # Remove the stone from the board
-							if self.current_player == PlayerToken.BLACK.value:
-								self.black_player_pebbles_taken += len(captured_stones)
-							else:  # White's turn
-								self.white_player_pebbles_taken += len(captured_stones)
-		return is_captures
 
 	def check_possible_capture(self):
 		"""Check if the current player can potentially capture a piece on the entire board."""
@@ -341,7 +472,7 @@ class Gomoku:
 							]
 
 							# Ensure all positions in the pattern are within bounds
-							if all(self.is_within_bounds(pos) for pos in pattern):
+							if all(self._is_within_bounds(row, col) for row, col in pattern):
 								stones = [
 									self.board[pattern[i][0], pattern[i][1]] for i in range(4)
 								]
@@ -383,7 +514,7 @@ class Gomoku:
 							]
 
 							# Vérifie si toutes les positions du motif sont dans les limites
-							if all(self.is_within_bounds(pos) for pos in pattern):
+							if all(self._is_within_bounds(row , col) for row, col in pattern):
 								stones = [
 									self.board[pattern[i][0], pattern[i][1]] for i in range(4)
 								]
@@ -410,4 +541,4 @@ class Gomoku:
 				return True, empty_pos
 
 		print("No capture intersects with the line of 5")
-		return False, None
+		return False, None#
