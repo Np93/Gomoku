@@ -86,6 +86,7 @@ class Gomoku:
 			else:
 				print("The player wins")
 				self.game_over = True
+				return True
 
 		self._change_player()
 
