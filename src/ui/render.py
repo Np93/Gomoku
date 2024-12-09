@@ -269,124 +269,6 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
         text_rect = winner_text.get_rect(center=(border_size + screen_size // 2, border_size + screen_size // 2))
         screen.blit(winner_text, text_rect)
 
-def is_line_occupied(board, line):
-    """
-    Vérifie si une ligne est toujours entièrement occupée.
-
-    Args:
-        board (numpy.ndarray): Le plateau de jeu actuel.
-        line (list of tuple): Liste des positions (row, col) de la ligne à vérifier.
-
-    Returns:
-        bool: True si toutes les positions de la ligne sont occupées, False sinon.
-    """
-    for row, col in line:
-        if board[row, col] == 0:  # Vérifie si la case est vide
-            return True
-    return False
-
-def process_move(gomoku, row, col):
-    """
-    Vérifie les captures et les mouvements interdits pour un coup donné.
-
-    Args:
-        gomoku: Instance du jeu Gomoku.
-        row (int): Ligne où le pion est placé.
-        col (int): Colonne où le pion est placé.
-
-    Returns:
-        Tuple (is_valid, forbidden_message):
-            - is_valid (bool): True si le coup est valide, False sinon.
-            - forbidden_message (str): Message d'erreur si le coup est interdit.
-    """
-    if not gomoku._check_capture_and_update(row, col):
-        if gomoku.is_double_three(row, col):
-            return False, f"Mouvement interdit : Double trois détecté"
-    return True, None
-
-def process_win(gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type):
-    """
-    Gère la vérification des conditions de victoire et des cas spéciaux.
-
-    Args:
-        gomoku: Instance du jeu Gomoku.
-        row (int): Ligne où le dernier pion a été placé.
-        col (int): Colonne où le dernier pion a été placé.
-        coup_special (bool): Indique si un coup spécial est actif.
-        special_turn_owner (int): Propriétaire du coup spécial.
-        break_line_5 (list): Ligne de 5 identifiée.
-        var_win_type (str): Type de victoire ou cas spécial détecté.
-
-    Returns:
-        Tuple (game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type):
-            - game_over (bool): Indique si la partie est terminée.
-            - winner (str): Le gagnant si la partie est terminée.
-            - coup_special (bool): État mis à jour du coup spécial.
-            - special_turn_owner (int): Propriétaire du coup spécial.
-            - break_line_5 (list): Ligne mise à jour pour le coup spécial.
-            - var_win_type (str): Type de victoire mis à jour.
-    """
-    winner = None
-    game_over = False
-
-    win_detected, line, win_type = gomoku.is_win({"row": row, "col": col})
-
-    if win_type == "win_five":
-        print("Victoire par ligne de 5 !")
-        winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-        game_over = True
-    elif win_type == "score_10":
-        print("Victoire par 10 points !")
-        winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-        game_over = True
-    elif win_type == "break_line":
-        print("Tentative de casser la ligne de 5 avec un coup spécial !")
-        coup_special = True
-        special_turn_owner = gomoku.current_player
-        break_line_5 = line
-        var_win_type = win_type
-    elif win_type == "play_special":
-        print("Coup spécial pour l'adversaire !")
-        coup_special = True
-        special_turn_owner = gomoku.current_player
-        var_win_type = win_type
-
-    if not game_over:
-        # Gestion du coup spécial actif
-        if coup_special and special_turn_owner != gomoku.current_player:
-            if var_win_type == "break_line":
-                # Vérification d'une capture sur la ligne
-                capture_on_line = is_line_occupied(gomoku.board, break_line_5)
-                if capture_on_line:
-                    print("Capture réussie, la partie continue !")
-                    coup_special = False
-                    special_turn_owner = None
-                    var_win_type = None
-                    break_line_5 = None
-                    gomoku.current_player = -gomoku.current_player
-                else:
-                    print("Échec du coup spécial, victoire par ligne de 5 !")
-                    winner = "Noir" if -gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-                    game_over = True
-                    coup_special = False
-                    special_turn_owner = None
-                    var_win_type = None
-            else:  # Gestion pour `play_special`
-                print("Coup spécial terminé.")
-                if gomoku.current_player == special_turn_owner:
-                    print("Coup spécial réussi, victoire pour le joueur ayant exécuté le coup spécial !")
-                    winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-                else:
-                    print("Coup spécial échoué, victoire pour le joueur ayant formé la ligne de 5 !")
-                    winner = "Noir" if special_turn_owner == PlayerToken.BLACK.value else "Blanc"
-                game_over = True
-                coup_special = False
-                special_turn_owner = None
-        else:
-            gomoku.current_player = -gomoku.current_player
-
-    return game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type
-
 def render_game_ui():
     global message_start_time, exit_game, turn_start_time
     forbidden_message = None
@@ -425,7 +307,6 @@ def render_game_ui():
                     best_move = ai.find_best_move(player=ia_player)
                     if best_move:
                         row, col = best_move
-                        # gomoku.board[row, col] = gomoku.current_player
 
                         # MAJ time
                         if turn_start_time:
@@ -439,15 +320,10 @@ def render_game_ui():
                         if not is_valid:
                             # gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
-
-                        # game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
-                        #     gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
-                        # )
                         
                         if gomoku.game_over:
                             game_over = True
                             winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-
 
                 else:
                     # time start
@@ -478,16 +354,10 @@ def render_game_ui():
                                             player_times[gomoku.current_player]["total_time"] += turn_duration
                                             player_times[gomoku.current_player]["last_time"] = turn_duration
                                             turn_start_time = None
-
-                                        # game_over, winner, coup_special, special_turn_owner, break_line_5, var_win_type = process_win(
-                                        #     gomoku, row, col, coup_special, special_turn_owner, break_line_5, var_win_type
-                                        # )
                                         
                                         if gomoku.game_over:
                                             game_over = True
                                             winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-
-                                        
 
                 if game_over and not exit_game:
                     action = end_game_menu(winner)
