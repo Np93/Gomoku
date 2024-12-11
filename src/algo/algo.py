@@ -11,7 +11,7 @@ class GomokuAI:
         :param depth: Profondeur de recherche pour Minimax.
         """
         self.gomoku = gomoku
-        self.board_size = gomoku.board_size
+        self.board_size = gomoku.board_size #NOTE pas dingue
         self.depth = depth
         self.DIRECTIONS = [(0, 1), (1, 0), (1, 1), (1, -1)]  # Horizontal, vertical, diagonales
 
@@ -23,6 +23,13 @@ class GomokuAI:
         self.gomoku = gomoku
         self.board_size = gomoku.board_size
         self.depth = 3
+
+    def random_move(self) -> tuple[int, int]:
+        """Génère un mouvement aléatoire."""
+        moves = self.gomoku.get_all_possible_moves()
+
+        #TODO: Check if moves is legitimate
+        return random.choice(moves)
 
     def generate_priority_moves(self, player):
         """Génère une liste de coups prioritaires."""

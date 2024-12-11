@@ -7,7 +7,6 @@ class Gomoku:
 	def __init__(self):
 		"""Initialize Gomoku game."""
 		#NOTE ALL ATTRIBUTES ARE CONSIDERED AS PRIVATE EVEN WITHOUT THE UNDERSCORE
-		super().__init__()
 		self.board_size: int = 19
 		self.board: np.ndarray = np.zeros((self.board_size, self.board_size), dtype=int)
 		self.current_player: int = PlayerToken.BLACK.value
@@ -53,39 +52,34 @@ class Gomoku:
 		return possible_moves
 
 	### RULES AND GAME LOGIC ###
+	#NOTE Function starting with _process check for the rule and change the game state!
 	#NOTE We shoud use only this function to play the game
 	def process_move(self, placed_row: int, placed_col: int) -> tuple[bool, str]:
 		"""
 		Processes a move by the current player at the specified row and column.
 		"""
   
-		#check for forced move
-		if len(self.forced_moves) > 0:
-			if (placed_row, placed_col) not in self.forced_moves:
-				print(f"Invalid move ({placed_row}, {placed_col}): Forced move required")
-				print(f"Forced moves: {self.forced_moves}")
-				return False, "forced_move"
-
-		#Reset forced moves in case the player made a valid move
-		self.forced_moves = []
+		# Si le joueur dopit faire un mouvement forcé et que ce n'est pas le cas, return false
+		if self._process_forced_move(placed_row, placed_col):
+			return False, "forced_move"
 
 		# Update the board with the current player's move
 		self.board[placed_row, placed_col] = self.current_player
 
 		# Check for captures and update the board
-		if not self._check_capture_and_update(placed_row, placed_col):
+		if not self._process_capture(placed_row, placed_col):
 			if self.is_double_three(placed_row, placed_col): #TODO pass is_double_three as a private method and fix it
 				print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté")
 				self._undo_move(placed_row, placed_col)
 				return False, "double_three"
 
-		# Check if the current player has 10 captured pebbles and won, returning True if so
+		# Verifie si le joueur possede au moins 10 pierres adverses, si oui -> fin de la partie
 		if self._process_10_pebbles():
-			return True, "score_10"
+			return True, "win_score"
 
-		# Check if the current player has aligned at least 5 pebbles and won, returning True if so
+		# Verifie si le joueur a aligné au moins 5 pierres sans possibilité de contre, si oui -> fin de la partie
 		if self._process_5_pebbles(placed_row, placed_col):
-			return True, "win_five"
+			return True, "win_alignments"
 
 		self._change_player()
 
@@ -105,7 +99,7 @@ class Gomoku:
 		return 0 <= placed_row < self.board_size and 0 <= placed_col < self.board_size
 
 	### Captures ###
-	def _check_capture_and_update(self, placed_row: int, placed_col: int) -> bool:
+	def _process_capture(self, placed_row: int, placed_col: int) -> bool:
 		"""
 		Check if the most recent move by the current player results in captures of opponent stones.
 
@@ -186,6 +180,20 @@ class Gomoku:
 								self.white_player_pebbles_taken += len(captured_stones_positions)
 
 		return capture_occurred
+
+	def _process_forced_move(self, placed_row: int, placed_col: int) -> bool:
+		"""Check if the current player has to make a forced move.
+		Returns True if the player has to make a forced move, False otherwise."""
+  
+		if len(self.forced_moves) > 0:
+			if (placed_row, placed_col) not in self.forced_moves:
+				print(f"Invalid move ({placed_row}, {placed_col}): Forced move required")
+				print(f"Forced moves: {self.forced_moves}")
+				return True
+		
+		# Reset forced moves if the player made a valid move
+		self.forced_moves = []
+		return False
 
 	### Double-three detection ###
 	def is_double_three(self, row: int, col: int) -> bool:
@@ -286,7 +294,7 @@ class Gomoku:
 			Gomoku_copy = self.copy()
 			Gomoku_copy.current_player = -self.current_player
 			Gomoku_copy.board[move] = -self.current_player
-			Gomoku_copy._check_capture_and_update(move[0], move[1])
+			Gomoku_copy._process_capture(move[0], move[1])
 
 			# Check if the original player can still win
 			Gomoku_copy.current_player = self.current_player
@@ -323,7 +331,7 @@ class Gomoku:
 		gomoku_copy.board[row, col] = gomoku_copy.current_player
 
 		# Si pas de capture, il faut vérifier le double-trois
-		if not gomoku_copy._check_capture_and_update(row, col):
+		if not gomoku_copy._process_capture(row, col):
 			if gomoku_copy.is_double_three(row, col):
 				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
 				self._undo_move(row, col)

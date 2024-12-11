@@ -16,7 +16,7 @@ class TestCaptureMechanism:
 		game.board[4, 5] = PlayerToken.BLACK.value
 
 		game.current_player = PlayerToken.BLACK.value
-		assert game._check_capture_and_update(4, 2) is True
+		assert game._process_capture(4, 2) is True
 		assert game.board[4, 3] == 0
 		assert game.board[4, 4] == 0
 		assert game.black_player_pebbles_taken == 2
@@ -28,7 +28,7 @@ class TestCaptureMechanism:
 		game.board[6, 4] = PlayerToken.BLACK.value
 
 		game.current_player = PlayerToken.BLACK.value
-		assert game._check_capture_and_update(5, 4) is False
+		assert game._process_capture(5, 4) is False
 		assert game.board[3, 4] == PlayerToken.WHITE.value
 		assert game.board[4, 4] == PlayerToken.WHITE.value
 		assert game.black_player_pebbles_taken == 0
@@ -40,7 +40,7 @@ class TestCaptureMechanism:
 		game.board[5, 5] = PlayerToken.BLACK.value
 
 		game.current_player = PlayerToken.BLACK.value
-		assert game._check_capture_and_update(2, 2) is True
+		assert game._process_capture(2, 2) is True
 		assert game.board[3, 3] == 0
 		assert game.board[4, 4] == 0
 		assert game.black_player_pebbles_taken == 2
@@ -52,7 +52,7 @@ class TestCaptureMechanism:
 		game.board[0, 3] = PlayerToken.BLACK.value
 
 		game.current_player = PlayerToken.BLACK.value
-		assert game._check_capture_and_update(0, 0) is True
+		assert game._process_capture(0, 0) is True
 		assert game.board[0, 1] == 0
 		assert game.board[0, 2] == 0
 		assert game.black_player_pebbles_taken == 2
@@ -64,7 +64,7 @@ class TestCaptureMechanism:
 		game.board[4, 5] = PlayerToken.WHITE.value
 
 		game.current_player = PlayerToken.BLACK.value
-		assert game._check_capture_and_update(4, 2) is False
+		assert game._process_capture(4, 2) is False
 		assert game.board[4, 3] == PlayerToken.WHITE.value
 		assert game.board[4, 4] == PlayerToken.BLACK.value
 		assert game.board[4, 5] == PlayerToken.WHITE.value
