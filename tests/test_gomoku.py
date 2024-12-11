@@ -86,7 +86,7 @@ class TestFivePebbleAlignment:
 		game.board[5, 8] = PlayerToken.BLACK.value
 		game.current_player = PlayerToken.BLACK.value
 
-		assert game._has_5_pebble_aligned(5, 4) is True
+		assert game._has_5_pebbles_aligned(5, 4) is True
 
 	def test_vertical_five_in_row(self, setup_game):
 		game = setup_game
@@ -97,7 +97,7 @@ class TestFivePebbleAlignment:
 		game.board[8, 5] = PlayerToken.WHITE.value
 		game.current_player = PlayerToken.WHITE.value
 
-		assert game._has_5_pebble_aligned(4, 5) is True
+		assert game._has_5_pebbles_aligned(4, 5) is True
 
 	def test_diagonal_five_in_row(self, setup_game):
 		game = setup_game
@@ -108,7 +108,7 @@ class TestFivePebbleAlignment:
 		game.board[8, 8] = PlayerToken.BLACK.value
 		game.current_player = PlayerToken.BLACK.value
 
-		assert game._has_5_pebble_aligned(4, 4) is True
+		assert game._has_5_pebbles_aligned(4, 4) is True
 
 	def test_anti_diagonal_five_in_row(self, setup_game):
 		game = setup_game
@@ -119,7 +119,7 @@ class TestFivePebbleAlignment:
 		game.board[8, 6] = PlayerToken.WHITE.value
 		game.current_player = PlayerToken.WHITE.value
 
-		assert game._has_5_pebble_aligned(4, 10) is True
+		assert game._has_5_pebbles_aligned(4, 10) is True
 
 	def test_no_alignment(self, setup_game):
 		game = setup_game
@@ -129,7 +129,7 @@ class TestFivePebbleAlignment:
 		game.board[5, 7] = PlayerToken.BLACK.value
 		game.current_player = PlayerToken.BLACK.value
 
-		assert game._has_5_pebble_aligned(5, 8) is False
+		assert game._has_5_pebbles_aligned(5, 8) is False
 
 	def test_edge_case_board_boundary(self, setup_game):
 		game = setup_game
@@ -140,7 +140,7 @@ class TestFivePebbleAlignment:
 		game.board[0, 18] = PlayerToken.BLACK.value
 		game.current_player = PlayerToken.BLACK.value
 
-		assert game._has_5_pebble_aligned(0, 14) is True
+		assert game._has_5_pebbles_aligned(0, 14) is True
 
 	def test_overlapping_lines(self, setup_game):
 		game = setup_game
@@ -159,7 +159,7 @@ class TestFivePebbleAlignment:
 		game.current_player = PlayerToken.BLACK.value
 
 		# Should detect horizontal alignment
-		assert game._has_5_pebble_aligned(5, 7) is True
+		assert game._has_5_pebbles_aligned(5, 7) is True
 
 	def test_mixed_tokens(self, setup_game):
 		game = setup_game
@@ -171,7 +171,7 @@ class TestFivePebbleAlignment:
 		game.board[5, 9] = PlayerToken.BLACK.value
 		game.current_player = PlayerToken.BLACK.value
 
-		assert game._has_5_pebble_aligned(5, 4) is False
+		assert game._has_5_pebbles_aligned(5, 4) is False
 
 	def test_more_than_five_in_row(self, setup_game):
 		game = setup_game
@@ -185,7 +185,7 @@ class TestFivePebbleAlignment:
 		game.board[5, 11] = PlayerToken.BLACK.value
 		game.current_player = PlayerToken.BLACK.value
 
-		assert game._has_5_pebble_aligned(5, 7) is True
+		assert game._has_5_pebbles_aligned(5, 7) is True
 
 class TestIs5PebbleAlignedBreakable:
 
@@ -207,8 +207,8 @@ class TestIs5PebbleAlignedBreakable:
 
 		# No White stones placed strategically, so no captures or blocks are possible.
 		# Assume get_all_possible_moves(White) returns empty or irrelevant moves that don't break the line.
-		assert game._has_5_pebble_aligned(placed_row, placed_col) is True
-		assert game._is_5_pebble_aligned_breakable(placed_row, placed_col) is False
+		assert game._has_5_pebbles_aligned(placed_row, placed_col) is True
+		assert game._is_5_pebbles_aligned_breakable(placed_row, placed_col) is False
 
 	def test_breakable_by_capture_of_exact_two_stones(self, setup_game):
 		game = setup_game
@@ -226,8 +226,8 @@ class TestIs5PebbleAlignedBreakable:
 		game.board[10, 6] = PlayerToken.BLACK.value
 		placed_row, placed_col = 10, 6
   
-		assert game._has_5_pebble_aligned(placed_row, placed_col) is True
-		assert game._is_5_pebble_aligned_breakable(placed_row, placed_col) is True
+		assert game._has_5_pebbles_aligned(placed_row, placed_col) is True
+		assert game._is_5_pebbles_aligned_breakable(placed_row, placed_col) is True
 
 	def test_no_break_possible(self, setup_game):
 		# A scenario where, though Black has formed a line of 5, White has no capturing or blocking move
@@ -240,8 +240,8 @@ class TestIs5PebbleAlignedBreakable:
 		game.current_player = PlayerToken.BLACK.value
 		placed_row, placed_col = 10, 9
 
-		assert game._has_5_pebble_aligned(placed_row, placed_col) is True
-		assert game._is_5_pebble_aligned_breakable(placed_row, placed_col) is False
+		assert game._has_5_pebbles_aligned(placed_row, placed_col) is True
+		assert game._is_5_pebbles_aligned_breakable(placed_row, placed_col) is False
 
 class TestIs10Pebbles:
 

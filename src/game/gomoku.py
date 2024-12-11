@@ -29,7 +29,7 @@ class Gomoku:
 
 
 	### Public utils ###
-	def draw_board(self):
+	def draw_board(self) -> None:
 		"""Draw the Gomoku board."""
 		header = "   " + " ".join(f"{i:2}" for i in range(self.board_size))
 		print(header)
@@ -54,7 +54,7 @@ class Gomoku:
 
 	### RULES AND GAME LOGIC ###
 	#NOTE We shoud use only this function to play the game
-	def process_move(self, placed_row: int, placed_col: int) -> bool:
+	def process_move(self, placed_row: int, placed_col: int) -> tuple[bool, str]:
 		"""
 		Processes a move by the current player at the specified row and column.
 		"""
@@ -64,7 +64,7 @@ class Gomoku:
 			if (placed_row, placed_col) not in self.forced_moves:
 				print(f"Invalid move ({placed_row}, {placed_col}): Forced move required")
 				print(f"Forced moves: {self.forced_moves}")
-				return False
+				return False, "forced_move"
 
 		#Reset forced moves in case the player made a valid move
 		self.forced_moves = []
@@ -77,29 +77,21 @@ class Gomoku:
 			if self.is_double_three(placed_row, placed_col): #TODO pass is_double_three as a private method and fix it
 				print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté")
 				self._undo_move(placed_row, placed_col)
-				return False
+				return False, "double_three"
 
-		# Check if the current player has 10 captured pebbles
-		if self._has_10_pebbles():
-			print(f"Player {self.current_player} has captured at least 10 opponent pebbles")
-			self.game_over = True
-			return True
+		# Check if the current player has 10 captured pebbles and won, returning True if so
+		if self._process_10_pebbles():
+			return True, "score_10"
 
-		# Check if the current player has aligned at least 5 pebbles
-		if self._has_5_pebble_aligned(placed_row, placed_col):
-			print(f"Player {self.current_player} has aligned at least 5 pebbles")
-			if self._is_5_pebble_aligned_breakable(placed_row, placed_col):
-				print(f"The opponent can break the line of 5 pebbles")
-			else:
-				print("The player wins")
-				self.game_over = True
-				return True
+		# Check if the current player has aligned at least 5 pebbles and won, returning True if so
+		if self._process_5_pebbles(placed_row, placed_col):
+			return True, "win_five"
 
 		self._change_player()
 
-		return True
+		return True, "valid_move"
 
-	### Priavte utils ###
+	### Private utils #####
 	def _change_player(self) -> None:
 		"""Change the current player."""
 		self.current_player = -self.current_player
@@ -195,130 +187,7 @@ class Gomoku:
 
 		return capture_occurred
 
-	### VICTORY CONDITIONS ###
-	def _has_10_pebbles(self) -> bool:
-		"""Check if a player has captured at least 10 opponent pebbles."""
-		if self.current_player == PlayerToken.BLACK.value:
-			return self.black_player_pebbles_taken >= 10
-		else:
-			return self.white_player_pebbles_taken >= 10
-
-	def _has_5_pebble_aligned(self, placed_row: int, placed_col: int) -> bool:
-		"""
-		Check if placing a pebble at the given position results in a continuous line 
-		of at least five pebbles of the current player's color. This can occur 
-		horizontally, vertically, or along either diagonal.
-		"""
-		current_player_token = self.current_player
-		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
-
-		for d_row, d_col in directions:
-			count = 1  # Include the newly placed pebble
-
-			# Check in the 'forward' direction
-			row, col = placed_row + d_row, placed_col + d_col
-			while 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row, col] == current_player_token:
-				count += 1
-				row += d_row
-				col += d_col
-
-			# Check in the 'backward' direction
-			row, col = placed_row - d_row, placed_col - d_col
-			while 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row, col] == current_player_token:
-				count += 1
-				row -= d_row
-				col -= d_col
-
-			if count >= 5:
-				return True
-
-		return False
-		"""
-		Check if placing a pebble at the given position results in one or more continuous lines
-		of at least five pebbles of the current player's color. This can occur horizontally,
-		vertically, or along either diagonal.
-
-		Returns:
-			A list of dictionaries, where each dictionary represents a found line:
-			{
-				'direction': (d_row, d_col),
-				'positions': [(r1, c1), (r2, c2), ...]  # all positions in the line
-			}
-			If no lines of length >= 5 are found, returns an empty list.
-		"""
-		current_player_token = self.current_player
-		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
-		found_lines = []
-
-		for d_row, d_col in directions:
-			# Start with the newly placed pebble
-			positions = [(placed_row, placed_col)]
-
-			# Check forward direction
-			row, col = placed_row + d_row, placed_col + d_col
-			while (0 <= row < self.board_size and 0 <= col < self.board_size 
-				and self.board[row, col] == current_player_token):
-				positions.append((row, col))
-				row += d_row
-				col += d_col
-
-			# Check backward direction
-			row, col = placed_row - d_row, placed_col - d_col
-			while (0 <= row < self.board_size and 0 <= col < self.board_size 
-				and self.board[row, col] == current_player_token):
-				positions.insert(0, (row, col))
-				row -= d_row
-				col -= d_col
-
-			if len(positions) >= 5:
-				found_lines.append(positions)
-
-		return found_lines
-
-	def _is_5_pebble_aligned_breakable(self, placed_row: int, placed_col: int) -> bool:
-		"""
-		Check all possible ways the opponent can break a line of five pebbles
-		"""
-
-		moves = self.get_all_possible_moves(-self.current_player)
-
-		for move in moves:
-			# Process the move
-			Gomoku_copy = self.copy()
-			Gomoku_copy.current_player = -self.current_player
-			Gomoku_copy.board[move] = -self.current_player
-			Gomoku_copy._check_capture_and_update(move[0], move[1])
-
-			# Check if the original player can still win
-			Gomoku_copy.current_player = self.current_player
-			if not Gomoku_copy._has_5_pebble_aligned(placed_row, placed_col):
-				self.forced_moves.append(move)
-
-		# Return True if at least one move can break the line
-		print(f"Moves to break the line: {self.forced_moves}")
-		return len(self.forced_moves) > 0
-
-
-	#NOTE TBC
-	@staticmethod
-	def is_move_valid(self, row: int, col: int) -> bool:
-		"""Vérifie si un mouvement est valide selon les règles de Gomoku.
-		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
-
-		# Créer une copie pour simuler le mouvement
-		gomoku_copy = self.copy()
-		gomoku_copy.board[row, col] = gomoku_copy.current_player
-
-		# Si pas de capture, il faut vérifier le double-trois
-		if not gomoku_copy._check_capture_and_update(row, col):
-			if gomoku_copy.is_double_three(row, col):
-				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
-				self._undo_move(row, col)
-				return False
-
-		return True
-
-	#TODO CHECK THIS FUNCTION
+	### Double-three detection ###
 	def is_double_three(self, row: int, col: int) -> bool:
 		"""Check if the move creates a double-three configuration.
 		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
@@ -358,6 +227,112 @@ class Gomoku:
 		
 		return False
 
+	### VICTORY CONDITIONS ###
+	def _has_10_pebbles(self) -> bool:
+		"""Check if a player has captured at least 10 opponent pebbles."""
+		if self.current_player == PlayerToken.BLACK.value:
+			return self.black_player_pebbles_taken >= 10
+		else:
+			return self.white_player_pebbles_taken >= 10
+
+	def _process_10_pebbles(self) -> bool:
+		"""Check if the current player has captured at least 10 opponent pebbles."""
+		if self._has_10_pebbles():
+			print(f"Player {self.current_player} has captured at least 10 opponent pebbles")
+			self.game_over = True
+			return True
+		return False
+
+	def _has_5_pebbles_aligned(self, placed_row: int, placed_col: int) -> bool:
+		"""
+		Check if placing a pebble at the given position results in a continuous line 
+		of at least five pebbles of the current player's color. This can occur 
+		horizontally, vertically, or along either diagonal.
+		"""
+		current_player_token = self.current_player
+		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+
+		for d_row, d_col in directions:
+			count = 1  # Include the newly placed pebble
+
+			# Check in the 'forward' direction
+			row, col = placed_row + d_row, placed_col + d_col
+			while 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row, col] == current_player_token:
+				count += 1
+				row += d_row
+				col += d_col
+
+			# Check in the 'backward' direction
+			row, col = placed_row - d_row, placed_col - d_col
+			while 0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row, col] == current_player_token:
+				count += 1
+				row -= d_row
+				col -= d_col
+
+			if count >= 5:
+				return True
+
+		return False
+
+	def _is_5_pebbles_aligned_breakable(self, placed_row: int, placed_col: int) -> bool:
+		"""
+		Check all possible ways the opponent can break a line of five pebbles
+		"""
+
+		moves = self.get_all_possible_moves(-self.current_player)
+
+		for move in moves:
+			# Process the move
+			Gomoku_copy = self.copy()
+			Gomoku_copy.current_player = -self.current_player
+			Gomoku_copy.board[move] = -self.current_player
+			Gomoku_copy._check_capture_and_update(move[0], move[1])
+
+			# Check if the original player can still win
+			Gomoku_copy.current_player = self.current_player
+			if not Gomoku_copy._has_5_pebbles_aligned(placed_row, placed_col):
+				self.forced_moves.append(move)
+
+		# Return True if at least one move can break the line
+		print(f"Moves to break the line: {self.forced_moves}")
+		return len(self.forced_moves) > 0
+
+	def _process_5_pebbles(self, placed_row: int, placed_col: int) -> bool:
+		"""
+		Process a move where the current player has aligned at least 5 pebbles.
+		"""
+		# Check if the opponent can break the line of 5 pebbles
+		if self._has_5_pebbles_aligned(placed_row, placed_col):
+			print(f"Player {self.current_player} has aligned at least 5 pebbles")
+			if self._is_5_pebbles_aligned_breakable(placed_row, placed_col):
+				print(f"The opponent can break the line of 5 pebbles")
+			else:
+				print("The player wins")
+				self.game_over = True
+				return True
+		return False
+
+	#TODO TO BE CONTINUED
+	@staticmethod
+	def is_move_valid(self, row: int, col: int) -> bool:
+		"""Vérifie si un mouvement est valide selon les règles de Gomoku.
+		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
+
+		# Créer une copie pour simuler le mouvement
+		gomoku_copy = self.copy()
+		gomoku_copy.board[row, col] = gomoku_copy.current_player
+
+		# Si pas de capture, il faut vérifier le double-trois
+		if not gomoku_copy._check_capture_and_update(row, col):
+			if gomoku_copy.is_double_three(row, col):
+				print(f"Mouvement interdit ({row}, {col}) : Double-trois détecté")
+				self._undo_move(row, col)
+				return False
+
+		return True
+
+	#TODO CHECK THIS FUNCTION
+
 	def _analyze_sequence_for_threats(self, sequence, player, middle_index):
 		"""Analyze a sequence to find specific open three threats ensuring the played stone is part of the pattern."""
 		seq_len = len(sequence)
@@ -383,8 +358,6 @@ class Gomoku:
 						return True
 
 		return False
-
-	def is_win(self, move_pos):
 		"""Check if there is a winning condition on the board."""
 
 		# Vérifie si un joueur a pris au moins 10 pierres adverses
@@ -555,4 +528,4 @@ class Gomoku:
 				return True, empty_pos
 
 		print("No capture intersects with the line of 5")
-		return False, None#
+		return False, None
