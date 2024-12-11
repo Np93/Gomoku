@@ -79,8 +79,15 @@ class Gomoku:
 				self._undo_move(placed_row, placed_col)
 				return False
 
-		if self._is_5_pebble_aligned(placed_row, placed_col):
-			print("A player has at least 5 pebbles aligned")
+		# Check if the current player has 10 captured pebbles
+		if self._has_10_pebbles():
+			print(f"Player {self.current_player} has captured at least 10 opponent pebbles")
+			self.game_over = True
+			return True
+
+		# Check if the current player has aligned at least 5 pebbles
+		if self._has_5_pebble_aligned(placed_row, placed_col):
+			print(f"Player {self.current_player} has aligned at least 5 pebbles")
 			if self._is_5_pebble_aligned_breakable(placed_row, placed_col):
 				print(f"The opponent can break the line of 5 pebbles")
 			else:
@@ -189,7 +196,14 @@ class Gomoku:
 		return capture_occurred
 
 	### VICTORY CONDITIONS ###
-	def _is_5_pebble_aligned(self, placed_row: int, placed_col: int) -> bool:
+	def _has_10_pebbles(self) -> bool:
+		"""Check if a player has captured at least 10 opponent pebbles."""
+		if self.current_player == PlayerToken.BLACK.value:
+			return self.black_player_pebbles_taken >= 10
+		else:
+			return self.white_player_pebbles_taken >= 10
+
+	def _has_5_pebble_aligned(self, placed_row: int, placed_col: int) -> bool:
 		"""
 		Check if placing a pebble at the given position results in a continuous line 
 		of at least five pebbles of the current player's color. This can occur 
@@ -277,7 +291,7 @@ class Gomoku:
 
 			# Check if the original player can still win
 			Gomoku_copy.current_player = self.current_player
-			if not Gomoku_copy._is_5_pebble_aligned(placed_row, placed_col):
+			if not Gomoku_copy._has_5_pebble_aligned(placed_row, placed_col):
 				self.forced_moves.append(move)
 
 		# Return True if at least one move can break the line
