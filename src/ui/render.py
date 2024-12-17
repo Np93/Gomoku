@@ -308,7 +308,8 @@ def render_game_ui():
                     if best_move:
                         row, col = best_move
 
-                        # MAJ time
+                        #TODO CREATE A FUINCTION MAJ time
+                        # TODO MAJ the logic of changing players with time management (gomoku.current_player)  is now changed in process_move 
                         if turn_start_time:
                             turn_duration = time.time() - turn_start_time
                             player_times[gomoku.current_player]["total_time"] += turn_duration
@@ -349,6 +350,7 @@ def render_game_ui():
                                             message_start_time = time.time()
                                             continue
                                         # MAJ time
+                                        # TODO CREATE A FUNCTION MAJ TIME
                                         if turn_start_time:
                                             turn_duration = time.time() - turn_start_time
                                             player_times[gomoku.current_player]["total_time"] += turn_duration
