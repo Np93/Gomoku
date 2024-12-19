@@ -55,6 +55,11 @@ class GomokuAI:
         print(f"Coup choisi : {move}")
         return move
 
+
+
+
+### LEGACY CODE ###
+
 # class GomokuAI:
 #     def __init__(self, gomoku, depth=3):
 #         """
