@@ -277,3 +277,124 @@ class TestIs10Pebbles:
 		game.current_player = PlayerToken.WHITE.value
 
 		assert game._has_10_pebbles() is False
+
+	class TestDoubleThreeDetection:
+
+		@pytest.fixture
+		def setup_game(self):
+			"""Set up a basic Gomoku game instance."""
+			return Gomoku()
+
+		def test_double_three_horizontal_and_vertical(self, setup_game):
+			game = setup_game
+			# Horizontal three at (5,4) to (5,6)
+			game.board[5, 4] = PlayerToken.BLACK.value
+			game.board[5, 5] = PlayerToken.BLACK.value
+			game.board[5, 6] = PlayerToken.BLACK.value
+			# Vertical three at (4,5) to (6,5)
+			game.board[4, 5] = PlayerToken.BLACK.value
+			game.board[6, 5] = PlayerToken.BLACK.value
+
+			# Place pebble at (5,5) to create a double three
+			game.current_player = PlayerToken.BLACK.value
+			assert game._is_double_three(5, 5) is True
+
+		def test_no_double_three_with_interruption(self, setup_game):
+			game = setup_game
+			# Horizontal line interrupted by a White pebble
+			game.board[5, 4] = PlayerToken.BLACK.value
+			game.board[5, 6] = PlayerToken.BLACK.value
+			game.board[5, 5] = PlayerToken.WHITE.value
+			# Vertical line interrupted by a White pebble
+			game.board[4, 5] = PlayerToken.BLACK.value
+			game.board[6, 5] = PlayerToken.BLACK.value
+
+			# Place pebble at (5,5) (which is already White) to check no double three
+			game.current_player = PlayerToken.BLACK.value
+			assert game._is_double_three(5, 5) is False
+
+		def test_double_three_with_diagonal_and_horizontal(self, setup_game):
+			game = setup_game
+			# Diagonal line (positive slope)
+			game.board[4, 4] = PlayerToken.BLACK.value
+			game.board[5, 5] = PlayerToken.BLACK.value
+			game.board[6, 6] = PlayerToken.BLACK.value
+			# Horizontal line
+			game.board[5, 3] = PlayerToken.BLACK.value
+			game.board[5, 4] = PlayerToken.BLACK.value
+
+			# Place pebble at (5,5) to create a double three
+			game.current_player = PlayerToken.BLACK.value
+			assert game._is_double_three(5, 5) is True
+
+		def test_no_double_three_with_incomplete_lines(self, setup_game):
+			game = setup_game
+			# Incomplete horizontal line
+			game.board[5, 4] = PlayerToken.BLACK.value
+			# Incomplete diagonal line
+			game.board[6, 6] = PlayerToken.BLACK.value
+
+			# Place pebble at (5,5) should not create a double three
+			game.current_player = PlayerToken.BLACK.value
+			assert game._is_double_three(5, 5) is False
+
+		def test_double_three_detects_correct_player(self, setup_game):
+			game = setup_game
+			# Horizontal three for Black
+			game.board[5, 4] = PlayerToken.BLACK.value
+			game.board[5, 5] = PlayerToken.BLACK.value
+			game.board[5, 6] = PlayerToken.BLACK.value
+			# Vertical three for White
+			game.board[4, 6] = PlayerToken.WHITE.value
+			game.board[6, 6] = PlayerToken.WHITE.value
+
+			# Place pebble at (5,6) for Black should not count White's potential lines
+			game.current_player = PlayerToken.BLACK.value
+			assert game._is_double_three(5, 6) is False
+
+
+			@pytest.fixture
+			def setup_game(self):
+				"""Set up a basic Gomoku game instance."""
+				return Gomoku()
+
+			def test_crochet_double_three(self, setup_game):
+				game = setup_game
+				game.board[5, 5] = PlayerToken.BLACK.value
+				game.board[6, 5] = PlayerToken.BLACK.value
+				game.board[7, 6] = PlayerToken.BLACK.value
+				game.board[7, 7] = PlayerToken.BLACK.value
+				
+				# Place a pebble that creates a double three at (5,7)
+				game.current_player = PlayerToken.BLACK.value
+				game.board[7, 5] = PlayerToken.BLACK.value
+
+				assert game._is_double_three(7, 5) is True
+
+			def test_diagonal_close_double_three(self, setup_game):
+				game = setup_game
+				game.board[5, 5] = PlayerToken.BLACK.value
+				game.board[6, 5] = PlayerToken.BLACK.value
+				game.board[6, 6] = PlayerToken.BLACK.value
+				game.board[5, 7] = PlayerToken.BLACK.value
+				
+				# Place a pebble that creates a double three at (4,4)
+				game.current_player = PlayerToken.BLACK.value
+				game.board[7, 5] = PlayerToken.BLACK.value
+
+				assert game._is_double_three(7, 5) is True
+
+
+			def test_diagonal_close_not_double_three(self, setup_game):
+				game = setup_game
+				game.board[5, 5] = PlayerToken.BLACK.value
+				game.board[6, 5] = PlayerToken.BLACK.value
+				game.board[6, 6] = PlayerToken.BLACK.value
+				game.board[5, 7] = PlayerToken.BLACK.value
+				game.board[8, 5] = PlayerToken.BLACK.value
+				
+				# Place a pebble that creates a double three at (4,4)
+				game.current_player = PlayerToken.BLACK.value
+				game.board[7, 5] = PlayerToken.BLACK.value
+
+				assert game._is_double_three(7, 5) is False

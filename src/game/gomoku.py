@@ -68,7 +68,7 @@ class Gomoku:
 
 		# Check for captures and update the board
 		if not self._process_capture(placed_row, placed_col):
-			if self.is_double_three(placed_row, placed_col): #TODO pass is_double_three as a private method and fix it
+			if self._is_double_three(placed_row, placed_col):
 				print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté")
 				self._undo_move(placed_row, placed_col)
 				return False, "double_three"
@@ -196,7 +196,7 @@ class Gomoku:
 		return False
 
 	### Double-three detection ###
-	def is_double_three(self, row: int, col: int) -> bool:
+	def _is_double_three(self, row: int, col: int) -> bool:
 		"""Check if the move creates a double-three configuration.
 		Le mouvement a déjà été effectué, row et col sont les positions du mouvement."""
 		threats = 0
@@ -232,6 +232,31 @@ class Gomoku:
 			if threats >= 2:
 				return True
 		
+		return False
+
+	def _analyze_sequence_for_threats(self, sequence, player, middle_index):
+		"""Analyze a sequence to find specific open three threats ensuring the played stone is part of the pattern."""
+		seq_len = len(sequence)
+
+		# Define patterns where the middle stone is part of an "open three"
+		# Patterns are checked with the middle stone as part of the three
+		patterns = [
+			(0, player, player, player, 0),
+			(0, player, player, 0, player, 0),
+			(0, player, 0, player, player, 0)
+		]
+
+		# Check patterns ensuring the middle stone is within the "three" part
+		for pattern in patterns:
+			start_index = middle_index - 2  # Start a bit left of the middle stone
+			pattern_length = len(pattern)
+			
+			# Slide the window of pattern length around the middle stone
+			for offset in range(-2, 3):
+				if 0 <= start_index + offset < seq_len - pattern_length + 1:
+					if tuple(sequence[start_index + offset:start_index + offset + pattern_length]) == pattern:
+						return True
+
 		return False
 
 	### VICTORY CONDITIONS ###
@@ -319,114 +344,6 @@ class Gomoku:
 				return True
 		return False
 
-	#TODO TO BE CONTINUED
-	#TODO CHECK THIS FUNCTION
-
-	def _analyze_sequence_for_threats(self, sequence, player, middle_index):
-		"""Analyze a sequence to find specific open three threats ensuring the played stone is part of the pattern."""
-		seq_len = len(sequence)
-
-		# Define patterns where the middle stone is part of an "open three"
-		# Patterns are checked with the middle stone as part of the three
-		patterns = [
-			(0, player, player, player, 0),
-			(0, player, player, 0, player, 0),
-			(0, player, 0, player, player, 0)
-		]
-
-		# Check patterns ensuring the middle stone is within the "three" part
-		for pattern in patterns:
-			start_index = middle_index - 2  # Start a bit left of the middle stone
-			end_index = middle_index + 3  # End a bit right of the middle stone, adjust based on pattern length
-			pattern_length = len(pattern)
-			
-			# Slide the window of pattern length around the middle stone
-			for offset in range(-2, 3):
-				if 0 <= start_index + offset < seq_len - pattern_length + 1:
-					if tuple(sequence[start_index + offset:start_index + offset + pattern_length]) == pattern:
-						return True
-
-		return False
-		"""Check if there is a winning condition on the board."""
-
-		# Vérifie si un joueur a pris au moins 10 pierres adverses
-		if self.current_player == PlayerToken.BLACK.value:
-			if self.black_player_pebbles_taken >= 10:
-				self.game_over = True
-				return True, [], "score_10"
-		else:
-			if self.white_player_pebbles_taken >= 10:
-				self.game_over = True
-				return True, [], "score_10"
-
-		row, col = move_pos["row"], move_pos["col"]
-		player = self.current_player  # Current player making the move
-		opponent = -player  # Opponent player
-
-		# Directions represent vertical, horizontal, and two diagonal checks
-		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
-
-		for dr, dc in directions:
-			count = 1  # Start counting the stone just placed
-			line = [(row, col)]  # Store the position of the stones in the line
-
-			# Check one direction (e.g., left or up)
-			for i in range(1, 5):
-				r, c = row + i * dr, col + i * dc
-				if 0 <= r < self.board_size and 0 <= c < self.board_size and self.board[r, c] == player:
-					count += 1
-					line.append((r, c))
-				else:
-					break
-
-			# Check the opposite direction (e.g., right or down)
-			for i in range(1, 5):
-				r, c = row - i * dr, col - i * dc
-				if 0 <= r < self.board_size and 0 <= c < self.board_size and self.board[r, c] == player:
-					count += 1
-					line.append((r, c))
-				else:
-					break
-
-			# Check if the count of consecutive stones has reached five or more
-			if count >= 5:
-				print(f"Ligne détectée : {line}")
-
-				# Détermine les informations relatives à l'adversaire
-				opponent_pebbles_taken = (
-					self.white_player_pebbles_taken if self.current_player == PlayerToken.BLACK.value else self.black_player_pebbles_taken
-				)
-				opponent_color = "White" if self.current_player == PlayerToken.BLACK.value else "Black"
-
-				# Affiche le nombre de pierres prises par l'adversaire
-				print(f"{opponent_color} player has {opponent_pebbles_taken} pebbles")
-
-				# Vérifie si l'adversaire a pris au moins 8 pierres
-				if opponent_pebbles_taken >= 8:
-					# Simule le tour de l’adversaire
-					self.current_player = -self.current_player
-					capture_possible, empty_pos = self.check_possible_capture()
-					self.current_player = -self.current_player  # Rétablit le joueur actuel
-
-					# Si une capture est possible, retourne une indication pour le coup spécial
-					if capture_possible:
-						return False, line, "play_special"
-
-				# Si l'adversaire a moins de 8 pierres, vérifie si une capture est possible sur la ligne de 5
-				self.current_player = -self.current_player
-				capture_on_five, empty_pos = self.check_capture_on_five(line)
-				self.current_player = -self.current_player
-				if capture_on_five:
-					print(f"Capture possible sur la ligne de 5 pour {opponent_color}")
-					return False, line, "break_line"
-
-				# Si aucune capture ne peut briser la ligne, victoire confirmée
-				self.game_over = True
-				print(f"Ligne de 5 détectée : {line}")
-				return True, line, "win_five"
-
-		# Si aucune condition de victoire n’est remplie, retourne False
-		return False, [], "no_win"
 
 
 ### LEGACY CODE ###
