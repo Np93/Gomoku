@@ -40,8 +40,19 @@ class Gomoku:
 			)
 			print(row)
 
-	def get_all_possible_moves(self, player: int) -> list:
-		"""Get all possible moves for the given player."""
+	def get_all_possible_moves(self) -> list[tuple[int, int]]:
+		"""
+		Get all possible moves for the given player.
+
+		This method scans the entire board and returns a list of all empty positions
+		where a move can be made. Note that this method does not check if the move 
+		is legitimate according to the game rules; it only identifies empty positions.
+
+		Returns:
+			list[tuple[int, int]]: A list of tuples representing the row and column 
+			indices of all possible moves.
+		"""
+		"""Get all possible moves for the given player. """
 		possible_moves = []
 
 		for row in range(self.board_size):
@@ -51,12 +62,52 @@ class Gomoku:
 
 		return possible_moves
 
+	def get_all_close_moves(self) -> list[tuple[int, int]]:
+		"""
+		Get all possible moves for the given player.
+
+		This method scans the entire board and returns a list of all empty positions
+		where a move can be made. Note that this method does not check if the move 
+		is legitimate according to the game rules; it only identifies empty positions.
+
+		Returns:
+			list[tuple[int, int]]: A list of tuples representing the row and column 
+			indices of all possible moves.
+		"""
+		"""Get all possible moves for the given player. """
+
+		possible_moves = []
+		direction = [(0, 1), (1, 0), (1, 1), (1, -1)] # Horizontal, vertical, and diagonals
+
+		for row in range(self.board_size):
+			for col in range(self.board_size):
+				if self.board[row, col] == PlayerToken.EMPTY.value:
+					for dr, dc in direction:
+						# Forward neighbor
+						adj_row_f = row + dr
+						adj_col_f = col + dc
+						if (0 <= adj_row_f < self.board_size) and (0 <= adj_col_f < self.board_size):
+							if self.board[adj_row_f, adj_col_f] != PlayerToken.EMPTY.value:
+								possible_moves.append((row, col))
+								break  # Found a pebble nearby; move on to next cell
+
+						# Backward neighbor
+						adj_row_b = row - dr
+						adj_col_b = col - dc
+						if (0 <= adj_row_b < self.board_size) and (0 <= adj_col_b < self.board_size):
+							if self.board[adj_row_b, adj_col_b] != PlayerToken.EMPTY.value:
+								possible_moves.append((row, col))
+								break  # Found a pebble nearby; move on to next cell
+
+		return possible_moves
+
 	### RULES AND GAME LOGIC ###
 	#NOTE Function starting with _process check for the rule and change the game state!
 	#NOTE We shoud use only this function to play the game
 	def process_move(self, placed_row: int, placed_col: int) -> tuple[bool, str]:
 		"""
 		Processes a move by the current player at the specified row and column.
+		Returns a tuple of (valid_move, reason) where:
 		"""
   
 		# Si le joueur dopit faire un mouvement forcé et que ce n'est pas le cas, return false
@@ -311,19 +362,22 @@ class Gomoku:
 		Check all possible ways the opponent can break a line of five pebbles
 		"""
 
-		moves = self.get_all_possible_moves(-self.current_player)
+		# temp swich player
+		self.current_player = -self.current_player
+		moves = self.get_all_possible_moves()
+		self.current_player = -self.current_player
 
-		for move in moves:
+		for row, col in moves:
 			# Process the move
 			Gomoku_copy = self.copy()
 			Gomoku_copy.current_player = -self.current_player
-			Gomoku_copy.board[move] = -self.current_player
-			Gomoku_copy._process_capture(move[0], move[1])
+			Gomoku_copy.board[row, col] = Gomoku_copy.current_player
+			Gomoku_copy._process_capture(row, col)
 
 			# Check if the original player can still win
 			Gomoku_copy.current_player = self.current_player
 			if not Gomoku_copy._has_5_pebbles_aligned(placed_row, placed_col):
-				self.forced_moves.append(move)
+				self.forced_moves.append((row, col))
 
 		# Return True if at least one move can break the line
 		print(f"Moves to break the line: {self.forced_moves}")

@@ -10,7 +10,7 @@ class GomokuAI:
         :param gomoku: Instance de la classe Gomoku.
         :param depth: Profondeur de recherche pour Minimax (non utilisée ici).
         """
-        self.gomoku = gomoku
+        self.gomoku = gomoku.copy()
         self.depth = depth
 
     def reset(self, gomoku):
@@ -28,31 +28,103 @@ class GomokuAI:
             return None
         return random.choice(moves)
 
-    def minimax(self, depth, is_maximizing, alpha, beta, player):
-        """
-        Minimax simplifié utilisant uniquement des mouvements aléatoires.
-        :param depth: Profondeur actuelle de recherche.
-        :param is_maximizing: Booléen indiquant si c'est au tour du joueur maximisant.
-        :param alpha: Non utilisé (pour compatibilité).
-        :param beta: Non utilisé (pour compatibilité).
-        :param player: Joueur en cours (1 pour noir, -1 pour blanc).
-        :return: Score fictif (toujours 0 ici) et mouvement aléatoire.
-        """
-        if depth == 0 or self.gomoku.game_over:
-            return 0, None  # Score fictif et aucun mouvement
+    def get_score_for_move(self) -> int:
+        """"""
+        #NOTE return random number for now
+        return random.randint(0, 1000)
 
-        move = self.random_move(player)
-        return 0, move
 
+    def minimax(self, depth, is_maximizing):
+        """
+        Recursive Minimax that explores all possible moves up to the given depth
+        and then picks the best move for the given 'player'.
+        
+        :param depth: Current search depth.
+        :param is_maximizing: Boolean indicating if it is the maximizing player's turn.
+        :param alpha: Unused in this simplified example (kept for compatibility).
+        :param beta: Unused in this simplified example (kept for compatibility).
+        :param player: Current player (1 for Black, -1 for White, for example).
+        :return: (best_score, best_move)
+        """
+
+        possible_moves = self.gomoku.get_all_close_moves() #list
+
+        # If it's the maximizing player's turn:
+        if is_maximizing:
+            best_score = float('-inf')
+            best_moves = []
+            
+            for (row, col) in possible_moves:
+                gomoku_ai = GomokuAI(self.gomoku)
+                print(f"Evaluating {row, col}")
+                
+                is_valid = gomoku_ai.gomoku.process_move(row, col)
+                if not is_valid:
+                    del gomoku_ai #free mem
+                    continue
+
+                # If we are at depth=1, evaluate this move directly
+                # Otherwise, recursively call minimax
+                if depth == 1:
+                    score = gomoku_ai.get_score_for_move()
+                else:
+                    score, _ = gomoku_ai.minimax(depth - 1, False)
+
+                # Track the best score and moves
+                if score > best_score:
+                    best_score = score
+                    best_moves = [(row, col)]
+                elif score == best_score:
+                    best_moves.append((row, col))
+
+            # Pick randomly if there are multiple best moves
+            best_move = random.choice(best_moves)
+            del gomoku_ai #free mem
+            return best_score, best_move
+
+        else:
+            # Minimizing player's turn
+            best_score = float('inf')
+            best_moves = []
+
+            for (row, col) in possible_moves:
+                gomoku_ai = GomokuAI(self.gomoku)
+                is_valid = gomoku_ai.gomoku.process_move(row, col)
+                if not is_valid:
+                    del gomoku_ai #free mem
+                    continue
+
+                # If we are at depth=1, evaluate this move directly
+                # Otherwise, recursively call minimax
+                if depth == 1:
+                    score = self.get_score_for_move()
+                else:
+                    # Switch to the maximizing player on next call
+                    score, _ = gomoku_ai.minimax(depth - 1, True)
+
+                # Track the best score and moves
+                if score < best_score:
+                    best_score = score
+                    best_moves = [(row, col)]
+                elif score == best_score:
+                    best_moves.append((row, col))
+
+            # Pick randomly if there are multiple best moves
+            best_move = random.choice(best_moves)
+            del gomoku_ai #free mem
+            return best_score, best_move
+
+        
     def find_best_move(self, player):
         """
         Trouve le meilleur coup pour le joueur (random ici).
         :param player: Joueur en cours (1 pour noir, -1 pour blanc).
         :return: Coup aléatoire.
         """
+        self.possible_moves = None
         print(f"--- Recherche d'un coup aléatoire pour le joueur {player} ---")
-        _, move = self.minimax(self.depth, True, float('-inf'), float('inf'), player)
-        print(f"Coup choisi : {move}")
+        score, move = self.minimax(self.depth, True)
+        print(f"Coup choisi : {move} avec un score de {score}")
         return move
 
 

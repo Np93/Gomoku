@@ -282,7 +282,6 @@ def render_game_ui():
         
         if game_mode in ["normal", "duo", "special"] and not exit_game:
             gomoku = Gomoku()
-            ai = GomokuAI(gomoku=gomoku, depth=1)
             running = True
             game_over = False
             winner = None
@@ -304,6 +303,7 @@ def render_game_ui():
                 if game_mode in ["normal", "special"] and gomoku.current_player == ia_player:
                     if not turn_start_time:
                         turn_start_time = time.time()
+                    ai = GomokuAI(gomoku=gomoku, depth=3)
                     best_move = ai.find_best_move(player=ia_player)
                     if best_move:
                         row, col = best_move
