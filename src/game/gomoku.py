@@ -1,6 +1,15 @@
 import numpy as np
 from src.game.playerTokens import PlayerToken
 
+DEBUG = True
+
+#create a decoreto that call the cunftion if debuig only
+def debug(func):
+	def wrapper(*args, **kwargs):
+		if DEBUG:
+			return func(*args, **kwargs)
+	return wrapper
+
 class Gomoku:
 	"""Gomoku game class."""
 
@@ -10,7 +19,7 @@ class Gomoku:
 		self.board_size: int = 19
 		self.board: np.ndarray = np.zeros((self.board_size, self.board_size), dtype=int)
 		self.current_player: int = PlayerToken.BLACK.value
-		self.white_player_pebbles_taken: int = 0
+		self.white_player_pebbles_taken: int = 0 # Number of pebbles taken by the white player
 		self.black_player_pebbles_taken: int = 0
 		self.forced_moves: list = []
 		self.game_over: bool = False
@@ -109,7 +118,10 @@ class Gomoku:
 		Processes a move by the current player at the specified row and column.
 		Returns a tuple of (valid_move, reason) where:
 		"""
-  
+
+		if self.game_over:
+			return False, "game_over"
+
 		# Si le joueur dopit faire un mouvement forcé et que ce n'est pas le cas, return false
 		if self._process_forced_move(placed_row, placed_col):
 			return False, "forced_move"
@@ -120,16 +132,18 @@ class Gomoku:
 		# Check for captures and update the board
 		if not self._process_capture(placed_row, placed_col):
 			if self._is_double_three(placed_row, placed_col):
-				print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté")
+				debug(lambda: print(f"Mouvement interdit ({placed_row}, {placed_col}) : Double-trois détecté"))()
 				self._undo_move(placed_row, placed_col)
 				return False, "double_three"
 
 		# Verifie si le joueur possede au moins 10 pierres adverses, si oui -> fin de la partie
 		if self._process_10_pebbles():
+			self._change_player()
 			return True, "win_score"
 
 		# Verifie si le joueur a aligné au moins 5 pierres sans possibilité de contre, si oui -> fin de la partie
 		if self._process_5_pebbles(placed_row, placed_col):
+			self._change_player()
 			return True, "win_alignments"
 
 		self._change_player()
@@ -378,9 +392,9 @@ class Gomoku:
 			Gomoku_copy.current_player = self.current_player
 			if not Gomoku_copy._has_5_pebbles_aligned(placed_row, placed_col):
 				self.forced_moves.append((row, col))
-
+				print(f"Moves to break the line: {self.forced_moves}")
+									
 		# Return True if at least one move can break the line
-		print(f"Moves to break the line: {self.forced_moves}")
 		return len(self.forced_moves) > 0
 
 	def _process_5_pebbles(self, placed_row: int, placed_col: int) -> bool:
@@ -389,11 +403,11 @@ class Gomoku:
 		"""
 		# Check if the opponent can break the line of 5 pebbles
 		if self._has_5_pebbles_aligned(placed_row, placed_col):
-			print(f"Player {self.current_player} has aligned at least 5 pebbles")
+			debug(lambda: print(f"Player {self.current_player} has aligned at least 5 pebbles"))()
 			if self._is_5_pebbles_aligned_breakable(placed_row, placed_col):
-				print(f"The opponent can break the line of 5 pebbles")
+				debug(lambda: print(f"The opponent can break the line of 5 pebbles"))()
 			else:
-				print("The player wins")
+				debug(lambda: print("The player wins"))()
 				self.game_over = True
 				return True
 		return False
