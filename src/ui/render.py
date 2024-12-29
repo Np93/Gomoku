@@ -324,7 +324,7 @@ def render_game_ui():
                         
                         if gomoku.game_over:
                             game_over = True
-                            winner = "Noir" if -gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+                            winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
 
                 else:
                     # time start
@@ -359,7 +359,7 @@ def render_game_ui():
                                         
                                         if gomoku.game_over:
                                             game_over = True
-                                            winner = "Noir" if -gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
+                                            winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
 
                 if game_over and not exit_game:
                     action = end_game_menu(winner)

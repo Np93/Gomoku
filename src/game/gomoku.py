@@ -1,7 +1,7 @@
 import numpy as np
 from src.game.playerTokens import PlayerToken
 
-DEBUG = True
+DEBUG = False
 
 #create a decoreto that call the cunftion if debuig only
 def debug(func):
@@ -138,12 +138,10 @@ class Gomoku:
 
 		# Verifie si le joueur possede au moins 10 pierres adverses, si oui -> fin de la partie
 		if self._process_10_pebbles():
-			self._change_player()
 			return True, "win_score"
 
 		# Verifie si le joueur a aligné au moins 5 pierres sans possibilité de contre, si oui -> fin de la partie
 		if self._process_5_pebbles(placed_row, placed_col):
-			self._change_player()
 			return True, "win_alignments"
 
 		self._change_player()
