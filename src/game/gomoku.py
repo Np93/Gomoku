@@ -390,7 +390,7 @@ class Gomoku:
 			Gomoku_copy.current_player = self.current_player
 			if not Gomoku_copy._has_5_pebbles_aligned(placed_row, placed_col):
 				self.forced_moves.append((row, col))
-				print(f"Moves to break the line: {self.forced_moves}")
+				debug(lambda: print(f"Moves to break the line: {self.forced_moves}"))()
 									
 		# Return True if at least one move can break the line
 		return len(self.forced_moves) > 0

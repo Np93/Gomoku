@@ -1,3 +1,5 @@
+*.egg-info/
+
 .vscode/
 
 # Prerequisites
