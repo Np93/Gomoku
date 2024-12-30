@@ -269,14 +269,20 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
         text_rect = winner_text.get_rect(center=(border_size + screen_size // 2, border_size + screen_size // 2))
         screen.blit(winner_text, text_rect)
 
+def update_opponent_time(player_times: dict, current_player: int, turn_start_time: float) -> float:
+    if turn_start_time:
+        # the player and modify before in process_move so we want the player from before
+        opponent_player = -current_player
+        turn_duration = time.time() - turn_start_time
+        player_times[opponent_player]["total_time"] += turn_duration
+        player_times[opponent_player]["last_time"] = turn_duration
+        return None
+    return turn_start_time
+
 def render_game_ui():
     global message_start_time, exit_game, turn_start_time
     forbidden_message = None
-    coup_special = False  # Indique si un coup spécial est actif
-    special_turn_owner = None  # Suivi du joueur qui a obtenu le coup spécial
-    break_line_5 = None # indique si il y a une possibiliter de briser la ligne de 5
-    var_win_type = None # indique si une condition de victoire est actuellement disponible
-
+    
     while not exit_game:
         game_mode = main_menu()
         
@@ -308,13 +314,8 @@ def render_game_ui():
                     if best_move:
                         row, col = best_move
 
-                        #TODO CREATE A FUINCTION MAJ time
-                        # TODO MAJ the logic of changing players with time management (gomoku.current_player)  is now changed in process_move 
                         if turn_start_time:
-                            turn_duration = time.time() - turn_start_time
-                            player_times[gomoku.current_player]["total_time"] += turn_duration
-                            player_times[gomoku.current_player]["last_time"] = turn_duration
-                            turn_start_time = None
+                            turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)
 
                         # is_valid, forbidden_message = process_move(gomoku, row, col)
                         is_valid = gomoku.process_move(row, col)
@@ -349,13 +350,9 @@ def render_game_ui():
                                         if not is_valid:
                                             message_start_time = time.time()
                                             continue
-                                        # MAJ time
-                                        # TODO CREATE A FUNCTION MAJ TIME
+
                                         if turn_start_time:
-                                            turn_duration = time.time() - turn_start_time
-                                            player_times[gomoku.current_player]["total_time"] += turn_duration
-                                            player_times[gomoku.current_player]["last_time"] = turn_duration
-                                            turn_start_time = None
+                                            turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)
                                         
                                         if gomoku.game_over:
                                             game_over = True
@@ -369,8 +366,6 @@ def render_game_ui():
                         ai = GomokuAI(gomoku)
                         game_over = False
                         winner = None
-                        coup_special = False
-                        special_turn_owner = None
                         if game_mode in ["special"] and not exit_game:
                             ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value])
                     elif action == "menu":
