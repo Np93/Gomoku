@@ -1,7 +1,6 @@
 import pygame
 import time
 import random
-
 from src.game.gomoku import Gomoku
 from src.game.playerTokens import PlayerToken
 from src.algo.algo import GomokuAI
@@ -279,6 +278,24 @@ def update_opponent_time(player_times: dict, current_player: int, turn_start_tim
         return None
     return turn_start_time
 
+def reset_player_times(player_times: dict) -> None:
+    for player in player_times.keys():
+        player_times[player]["total_time"] = 0
+        player_times[player]["last_time"] = 0
+
+def initialize_game(game_mode: str) -> tuple:
+    gomoku = Gomoku()
+    ia_player = None
+    running = True
+    game_over = False
+    winner = None
+
+    if game_mode == "special":
+        ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value])
+    elif game_mode == "normal":
+        ia_player = PlayerToken.WHITE.value
+    return gomoku, ia_player, running, game_over, winner
+
 def render_game_ui():
     global message_start_time, exit_game, turn_start_time
     forbidden_message = None
@@ -287,15 +304,8 @@ def render_game_ui():
         game_mode = main_menu()
         
         if game_mode in ["normal", "duo", "special"] and not exit_game:
-            gomoku = Gomoku()
-            running = True
-            game_over = False
-            winner = None
-            ia_player = PlayerToken.WHITE.value
+            gomoku, ia_player, running, game_over, winner = initialize_game(game_mode)
         
-            if game_mode in ["special"] and not exit_game:
-                ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value]) # Déterminer aléatoirement qui est contrôlé par l'IA
-                print(ia_player)
             while running and not exit_game:
                 draw_board(gomoku, winner, forbidden_message)
                 
@@ -314,15 +324,13 @@ def render_game_ui():
                     if best_move:
                         row, col = best_move
 
-                        if turn_start_time:
-                            turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)
-
                         # is_valid, forbidden_message = process_move(gomoku, row, col)
                         is_valid = gomoku.process_move(row, col)
                         if not is_valid:
                             # gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
-                        
+                        if turn_start_time:
+                            turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)        
                         if gomoku.game_over:
                             game_over = True
                             winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
@@ -359,6 +367,7 @@ def render_game_ui():
                                             winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
 
                 if game_over and not exit_game:
+                    reset_player_times(player_times)
                     action = end_game_menu(winner)
                     if action == "replay":
                         gomoku = Gomoku()
