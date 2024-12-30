@@ -309,10 +309,11 @@ def render_game_ui():
             while running and not exit_game:
                 draw_board(gomoku, winner, forbidden_message)
                 
-                if forbidden_message and time.time() - message_start_time < message_duration:
+                if forbidden_message and message_start_time is not None and time.time() - message_start_time < message_duration:
                     draw_forbidden_message(forbidden_message)
-                elif forbidden_message and time.time() - message_start_time >= message_duration:
+                elif forbidden_message or message_start_time is not None and time.time() - message_start_time >= message_duration:
                     forbidden_message = None
+                    message_start_time = None
                 
                 pygame.display.flip()
 
@@ -324,9 +325,9 @@ def render_game_ui():
                     if best_move:
                         row, col = best_move
 
-                        # is_valid, forbidden_message = process_move(gomoku, row, col)
-                        is_valid = gomoku.process_move(row, col)
+                        is_valid, forbidden_message = gomoku.process_move(row, col)
                         if not is_valid:
+                            message_start_time = time.time()
                             # gomoku.board[row, col] = PlayerToken.EMPTY.value
                             continue
                         if turn_start_time:
@@ -354,7 +355,7 @@ def render_game_ui():
 
                                 if 0 <= row < board_size and 0 <= col < board_size:
                                     if gomoku.board[row, col] == PlayerToken.EMPTY.value:
-                                        is_valid = gomoku.process_move(row, col)
+                                        is_valid, forbidden_message = gomoku.process_move(row, col)
                                         if not is_valid:
                                             message_start_time = time.time()
                                             continue
