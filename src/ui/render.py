@@ -190,7 +190,7 @@ def main_menu():
 
 def end_game_menu(winner):
     """Display the end game menu with options to replay, return to menu, or quit."""
-    draw_background()
+    # draw_background()
     font = pygame.font.Font(None, 60)
     small_font = pygame.font.Font(None, 40)
     quit_font = pygame.font.Font(None, 30)
@@ -239,7 +239,7 @@ def end_game_menu(winner):
 
 def draw_board(gomoku, winner=None, forbidden_message=None):
     """Draw the Gomoku board and display game information."""
-    draw_background()
+    # draw_background()
     screen.fill(BORDER_COLOR)
     pygame.draw.rect(screen, BOARD_COLOR, (border_size, border_size, screen_size, screen_size))
 
