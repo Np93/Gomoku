@@ -26,6 +26,7 @@ BOARD_COLOR = (205, 133, 63)  # Light brown for the board
 GRID_COLOR = (0, 0, 0)        # Color for the grid lines
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+GRAY = (169, 169, 169)
 TEXT_COLOR = (0, 0, 0)        # Color for the text
 WINNER_COLOR = (255, 0, 0)
 BUTTON_COLOR = (70, 130, 180) # Color for buttons in the menu
@@ -106,6 +107,34 @@ def handle_quit_button(mouse_pos, quit_center, radius):
         pygame.quit()
         quit()
 
+def draw_animated_stone(row, col, final_color, duration=0.3):
+    """Animate the placement of a stone starting from gray to the final color."""
+    steps = 10
+    max_radius = pion_radius
+    for step in range(steps):
+        radius = int(max_radius * (step + 1) / steps)
+        intermediate_color = (
+            GRAY
+            # GRAY[0] + (final_color[0] - GRAY[0]) * step // steps,
+            # GRAY[1] + (final_color[1] - GRAY[1]) * step // steps
+            # GRAY[2] + (final_color[2] - GRAY[2]) * step // steps
+        )
+        pygame.draw.circle(screen, intermediate_color, (
+            border_size + cell_size // 2 + col * cell_size,
+            border_size + cell_size // 2 + row * cell_size
+        ), radius)
+        pygame.display.flip()
+        time.sleep(duration / steps)
+
+# def draw_background(): en test pour l'instant c'est de la merde de damier
+#     """Draw a patterned background for the game."""
+#     screen.fill(BORDER_COLOR)
+#     for x in range(0, total_screen_width, cell_size):
+#         for y in range(0, total_screen_height, cell_size):
+#             rect = pygame.Rect(x, y, cell_size, cell_size)
+#             color = (210, 180, 140) if (x // cell_size + y // cell_size) % 2 == 0 else (160, 82, 45)
+#             pygame.draw.rect(screen, color, rect)
+
 def main_menu():
     """Display the main menu and handle user interaction."""
     font = pygame.font.Font(None, 60)
@@ -114,7 +143,7 @@ def main_menu():
     
     quit_button_radius = 40
     quit_button_center = (total_screen_width - quit_button_radius - 30, total_screen_height - quit_button_radius - 30)
-    
+
     while True:
         screen.fill(BORDER_COLOR)
         
@@ -161,6 +190,7 @@ def main_menu():
 
 def end_game_menu(winner):
     """Display the end game menu with options to replay, return to menu, or quit."""
+    draw_background()
     font = pygame.font.Font(None, 60)
     small_font = pygame.font.Font(None, 40)
     quit_font = pygame.font.Font(None, 30)
@@ -209,6 +239,7 @@ def end_game_menu(winner):
 
 def draw_board(gomoku, winner=None, forbidden_message=None):
     """Draw the Gomoku board and display game information."""
+    draw_background()
     screen.fill(BORDER_COLOR)
     pygame.draw.rect(screen, BOARD_COLOR, (border_size, border_size, screen_size, screen_size))
 
@@ -297,47 +328,75 @@ def initialize_game(game_mode: str) -> tuple:
     return gomoku, ia_player, running, game_over, winner
 
 def render_game_ui():
+    """Main UI rendering loop for the game."""
+
+    def reset_forbidden_message(forbidden_message, message_start_time, message_duration):
+        """Reset the forbidden message if its duration has passed."""
+        if forbidden_message and message_start_time is not None and time.time() - message_start_time >= message_duration:
+            return None, None
+        return forbidden_message, message_start_time
+
+    def handle_ai_turn(gomoku, ia_player, ai, player_times, message_start_time):
+        """Handle the AI's turn."""
+        score, best_move = ai.minimax(3, True, True)
+        if best_move:
+            row, col = best_move
+            is_valid, forbidden_message = gomoku.process_move(row, col)
+            if not is_valid:
+                message_start_time = time.time()
+                return forbidden_message, message_start_time, False, is_valid, col, row
+
+        return None, message_start_time, gomoku.game_over, is_valid, col, row
+
+    def handle_player_turn(event, gomoku, color, player_times, message_start_time):
+        """Handle the player's turn."""
+        x, y = event.pos
+        grid_start = border_size + cell_size // 2
+        grid_end = border_size + screen_size - cell_size // 2
+
+        is_valid = False
+        col, row = None, None
+        if grid_start <= x <= grid_end and grid_start <= y <= grid_end:
+            col = int(round((x - grid_start) / cell_size))
+            row = int(round((y - grid_start) / cell_size))
+
+            if 0 <= row < board_size and 0 <= col < board_size:
+                if gomoku.board[row, col] == PlayerToken.EMPTY.value:
+                    is_valid, forbidden_message = gomoku.process_move(row, col)
+                    if not is_valid:
+                        message_start_time = time.time()
+                        return forbidden_message, message_start_time, False, is_valid, col, row
+        
+        return None, message_start_time, gomoku.game_over, is_valid, col, row
+
     global message_start_time, exit_game, turn_start_time
     forbidden_message = None
-    
+
     while not exit_game:
         game_mode = main_menu()
-        
-        if game_mode in ["normal", "duo", "special"] and not exit_game:
+
+        if game_mode in ["normal", "duo", "special"]:
             gomoku, ia_player, running, game_over, winner = initialize_game(game_mode)
-        
-            while running and not exit_game:
+
+            while running:
                 draw_board(gomoku, winner, forbidden_message)
-                
-                if forbidden_message and message_start_time is not None and time.time() - message_start_time < message_duration:
-                    draw_forbidden_message(forbidden_message)
-                elif forbidden_message or message_start_time is not None and time.time() - message_start_time >= message_duration:
-                    forbidden_message = None
-                    message_start_time = None
-                
+                forbidden_message, message_start_time = reset_forbidden_message(forbidden_message, message_start_time, message_duration)
                 pygame.display.flip()
 
+                color = WHITE if gomoku.current_player == PlayerToken.WHITE.value else BLACK
+
                 if game_mode in ["normal", "special"] and gomoku.current_player == ia_player:
+                    ai = GomokuAI(gomoku=gomoku, depth=3)
                     if not turn_start_time:
                         turn_start_time = time.time()
-                    ai = GomokuAI(gomoku=gomoku, depth=3)
-                    score, best_move = ai.minimax(3, True, True)
-                    if best_move:
-                        row, col = best_move
-
-                        is_valid, forbidden_message = gomoku.process_move(row, col)
-                        if not is_valid:
-                            message_start_time = time.time()
-                            # gomoku.board[row, col] = PlayerToken.EMPTY.value
-                            continue
-                        if turn_start_time:
-                            turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)        
-                        if gomoku.game_over:
-                            game_over = True
-                            winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-
+                    forbidden_message, message_start_time, game_over, is_valid, col, row = handle_ai_turn(
+                        gomoku, ia_player, ai, player_times, message_start_time
+                    )
+                    if turn_start_time and is_valid:
+                        turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)
+                    if is_valid:
+                        draw_animated_stone(row, col, color)
                 else:
-                    # time start
                     if not turn_start_time:
                         turn_start_time = time.time()
                     for event in pygame.event.get():
@@ -345,38 +404,28 @@ def render_game_ui():
                             running = False
                             exit_game = True
                         elif event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                            x, y = event.pos
-                            grid_start = border_size + cell_size // 2
-                            grid_end = border_size + screen_size - cell_size // 2
-
-                            if grid_start <= x <= grid_end and grid_start <= y <= grid_end:
-                                col = int(round((x - grid_start) / cell_size))
-                                row = int(round((y - grid_start) / cell_size))
-
-                                if 0 <= row < board_size and 0 <= col < board_size:
-                                    if gomoku.board[row, col] == PlayerToken.EMPTY.value:
-                                        is_valid, forbidden_message = gomoku.process_move(row, col)
-                                        if not is_valid:
-                                            message_start_time = time.time()
-                                            continue
-
-                                        if turn_start_time:
-                                            turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)
-                                        
-                                        if gomoku.game_over:
-                                            game_over = True
-                                            winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-
-                if game_over and not exit_game:
+                            forbidden_message, message_start_time, game_over, is_valid, col, row = handle_player_turn(
+                                event, gomoku, turn_start_time, player_times, message_start_time
+                            )
+                            if turn_start_time and is_valid:
+                                turn_start_time = update_opponent_time(player_times, gomoku.current_player, turn_start_time)
+                            if is_valid:
+                                draw_animated_stone(row, col, color)
+                if gomoku.game_over:
+                    game_over = True
+                    winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"        
+                print(gomoku.game_over)    
+                if game_over:
                     reset_player_times(player_times)
                     action = end_game_menu(winner)
                     if action == "replay":
                         gomoku = Gomoku()
-                        ai.reset(gomoku)
-                        ai = GomokuAI(gomoku)
+                        if game_mode in ["normal", "special"]:
+                            ai.reset(gomoku)
+                            ai = GomokuAI(gomoku)
                         game_over = False
                         winner = None
-                        if game_mode in ["special"] and not exit_game:
+                        if game_mode in ["special"]:
                             ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value])
                     elif action == "menu":
                         break
