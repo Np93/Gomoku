@@ -110,6 +110,15 @@ class Gomoku:
 
 		return possible_moves
 
+	def _get_all_pebble_of_player(self, player: int) -> list[tuple[int, int]]:
+		"""Get all the pebbles of the player."""
+		pebbles = []
+		for row in range(self.board_size):
+			for col in range(self.board_size):
+				if self.board[row, col] == player:
+					pebbles.append((row, col))
+		return pebbles
+
 	### RULES AND GAME LOGIC ###
 	#NOTE Function starting with _process check for the rule and change the game state!
 	#NOTE We shoud use only this function to play the game
@@ -247,7 +256,7 @@ class Gomoku:
 	def _process_forced_move(self, placed_row: int, placed_col: int) -> bool:
 		"""Check if the current player has to make a forced move.
 		Returns True if the player has to make a forced move, False otherwise."""
-  
+
 		if len(self.forced_moves) > 0:
 			if (placed_row, placed_col) not in self.forced_moves:
 				print(f"Invalid move ({placed_row}, {placed_col}): Forced move required")
@@ -319,6 +328,76 @@ class Gomoku:
 				if 0 <= start_index + offset < seq_len - pattern_length + 1:
 					if tuple(sequence[start_index + offset:start_index + offset + pattern_length]) == pattern:
 						return True
+
+		return False
+
+	def _get_number_of_threats(self, player):
+		"""
+		Calculate the number of threats for a given player.
+		A threat is defined by specific patterns in any direction: horizontal, vertical, or diagonal.
+
+		Args:
+			player (int): The player identifier (e.g., 1 or 2).
+
+		Returns:
+			int: Total number of threats.
+		"""
+		pebbles = self._get_all_pebble_of_player(player)
+		threats = 0
+		patterns = [
+			(0, player, player, player, 0),
+			(0, player, player, 0, player, 0),
+			(0, player, 0, player, player, 0)
+		]
+
+		# Precompute the directions
+		directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+
+		for row, col in pebbles:
+			for dr, dc in directions:
+				for pattern in patterns:
+					# Check both directions simultaneously
+					if self._check_pattern(row, col, dr, dc, pattern) or self._check_pattern(row, col, -dr, -dc, pattern):
+						threats += 1
+						break  # No need to check further for this direction/pattern
+
+		return threats
+
+	def _check_pattern(self, start_row, start_col, dr, dc, pattern):
+		"""
+		Check if a specific pattern exists starting from (start_row, start_col)
+		and following the direction given by (dr, dc).
+
+		Args:
+			start_row (int): Starting row index.
+			start_col (int): Starting column index.
+			dr (int): Row direction (delta row).
+			dc (int): Column direction (delta column).
+			pattern (tuple): The pattern to match.
+
+		Returns:
+			bool: True if the pattern matches, False otherwise.
+		"""
+		pattern_length = len(pattern)
+
+		# Precompute the pattern indices and deltas
+		offsets = [(i * dr, i * dc) for i in range(pattern_length)]
+
+		# Iterate over all possible alignment offsets for the pattern
+		for shift in range(-pattern_length + 1, 1):
+			match = True
+
+			for idx, (row_delta, col_delta) in enumerate(offsets):
+				row = start_row + row_delta + shift * dr
+				col = start_col + col_delta + shift * dc
+
+				# Ensure the position is within bounds and matches the pattern
+				if not self._is_within_bounds(row, col) or self.board[row, col] != pattern[idx]:
+					match = False
+					break
+
+			if match:
+				return True
 
 		return False
 

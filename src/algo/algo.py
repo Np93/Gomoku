@@ -66,8 +66,12 @@ class GomokuAI:
 		""""""
 		#NOTE FOR ME, WHITE HAS A POSITIVE VALUE (AI), BLACK HAS A NEGATIVE VALUE (PLAYER)
 		score = 0
+
+		number_of_threat_white = self.gomoku._get_number_of_threats(PlayerToken.WHITE.value)
+		number_of_threat_black = self.gomoku._get_number_of_threats(PlayerToken.BLACK.value)
+		score = (number_of_threat_white - number_of_threat_black) / 3 * 10
 	
-		score = (self.gomoku.white_player_pebbles_taken - self.gomoku.black_player_pebbles_taken) * 10
+		score += (self.gomoku.white_player_pebbles_taken - self.gomoku.black_player_pebbles_taken) * 10
 
 		return score
 
