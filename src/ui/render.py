@@ -32,6 +32,7 @@ WINNER_COLOR = (255, 0, 0)
 BUTTON_COLOR = (70, 130, 180) # Color for buttons in the menu
 BUTTON_HOVER_COLOR = (100, 149, 237) # Hover color for buttons
 QUIT_BUTTON_COLOR = (220, 20, 60)    # Color for the quit button
+QUIT_BUTTON_HOVER_COLOR = (255, 69, 0)
 
 # Stone size (based on cell_size)
 pion_radius = cell_size // 2.5  # Adjusted size for larger stones
@@ -84,19 +85,27 @@ def draw_forbidden_message(message):
         screen.blit(text_surface, (message_x, message_y))
         message_y += line_spacing
 
-def draw_button(screen, button_rect, text, font, mouse_pos, button_color, hover_color, text_color):
-    """Draw a button with hover effect and text."""
+def draw_button(screen, button_rect, text, font, mouse_pos, button_color, hover_color, text_color, outline_color=None):
+    """Draw a button with hover effect, text, and optional outline."""
     if button_rect.collidepoint(mouse_pos):
-        pygame.draw.rect(screen, hover_color, button_rect)
+        pygame.draw.rect(screen, hover_color, button_rect)  # Change color on hover
+        if outline_color:  # Optional outline effect
+            pygame.draw.rect(screen, outline_color, button_rect, 3)  # Draw outline with thickness 3
     else:
-        pygame.draw.rect(screen, button_color, button_rect)
+        pygame.draw.rect(screen, button_color, button_rect)  # Default color
     text_surface = font.render(text, True, text_color)
-    screen.blit(text_surface, (button_rect.centerx - text_surface.get_width() // 2,
-                            button_rect.centery - text_surface.get_height() // 2))
+    screen.blit(
+        text_surface, 
+        (button_rect.centerx - text_surface.get_width() // 2,
+         button_rect.centery - text_surface.get_height() // 2)
+    )
 
-def draw_quit_button(screen, quit_center, radius, font, text_color, button_color):
-    """Draw the round 'Quitter' button."""
-    pygame.draw.circle(screen, button_color, quit_center, radius)
+def draw_quit_button(screen, quit_center, radius, font, mouse_pos, text_color, button_color, hover_color):
+    """Draw the round 'Quitter' button with hover effect."""
+    if (mouse_pos[0] - quit_center[0]) ** 2 + (mouse_pos[1] - quit_center[1]) ** 2 <= radius ** 2:
+        pygame.draw.circle(screen, hover_color, quit_center, radius)
+    else:
+        pygame.draw.circle(screen, button_color, quit_center, radius)
     quit_text = font.render("Quitter", True, text_color)
     screen.blit(quit_text, (quit_center[0] - quit_text.get_width() // 2,
                             quit_center[1] - quit_text.get_height() // 2))
@@ -115,9 +124,6 @@ def draw_animated_stone(row, col, final_color, duration=0.3):
         radius = int(max_radius * (step + 1) / steps)
         intermediate_color = (
             GRAY
-            # GRAY[0] + (final_color[0] - GRAY[0]) * step // steps,
-            # GRAY[1] + (final_color[1] - GRAY[1]) * step // steps
-            # GRAY[2] + (final_color[2] - GRAY[2]) * step // steps
         )
         pygame.draw.circle(screen, intermediate_color, (
             border_size + cell_size // 2 + col * cell_size,
@@ -160,14 +166,14 @@ def main_menu():
         
         # Draw buttons using the draw_button function
         draw_button(screen, normal_button, "Partie normale", small_font, mouse_pos,
-                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
         draw_button(screen, special_button, "Partie spéciale", small_font, mouse_pos,
-                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
-        draw_button(screen, duo_button, "Duo", small_font, mouse_pos,  # Draw the "Duo" button
-                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
+        draw_button(screen, duo_button, "Duo", small_font, mouse_pos,
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
         
         # Draw the "Quitter" button using draw_quit_button
-        draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, WHITE, QUIT_BUTTON_COLOR)
+        draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, QUIT_BUTTON_HOVER_COLOR)
         
         # Event handling
         for event in pygame.event.get():
@@ -213,12 +219,12 @@ def end_game_menu(winner):
         
         # Draw buttons using the draw_button function
         draw_button(screen, replay_button, "Rejouer", small_font, mouse_pos,
-                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
         draw_button(screen, menu_button, "Retour au menu", small_font, mouse_pos,
-                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE)
+                    BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
         
         # Draw the "Quitter" button using draw_quit_button
-        draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, WHITE, QUIT_BUTTON_COLOR)
+        draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, QUIT_BUTTON_HOVER_COLOR)
         
         # Event handling
         for event in pygame.event.get():
@@ -413,8 +419,7 @@ def render_game_ui():
                                 draw_animated_stone(row, col, color)
                 if gomoku.game_over:
                     game_over = True
-                    winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"        
-                print(gomoku.game_over)    
+                    winner = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"            
                 if game_over:
                     reset_player_times(player_times)
                     action = end_game_menu(winner)
