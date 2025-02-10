@@ -16,6 +16,7 @@ PYBIND11_MODULE(cpp_gomoku, m) {
 		.def("processMove", &Gomoku::processMove)
 		.def("process5Pebbles", &Gomoku::process5Pebbles, py::arg("row"), py::arg("col"))
 		.def("isDoubleThree", &Gomoku::isDoubleThree, py::arg("row"), py::arg("col"))
+		.def("getNumberOfThreats", &Gomoku::getNumberOfThreats, py::arg("player"))
 		.def("getBoardSize", &Gomoku::getBoardSize)
 		.def("getBoardValue", &Gomoku::getBoardValue)
 		.def("getCurrentPlayer", &Gomoku::getCurrentPlayer)

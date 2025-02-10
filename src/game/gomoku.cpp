@@ -454,23 +454,7 @@ bool Gomoku::analyzeSequenceForThreats(const std::vector<int> &sequence, int pla
         {0, player, 0, player, player, 0}
     };
 
-	std::cout << "Received sequence: ";
-	for (auto &c : sequence) {
-		std::cout << c << " ";
-	}
-	std::cout << std::endl;
-
-	std::cout << "Middle index: " << middleIndex << std::endl;
-
     int seqLen = (int)sequence.size();
-
-	std::cout << "Patterns to detect: " << std::endl;
-	for (const auto& pat : patterns) {
-		for (const auto& p : pat) {
-			std::cout << p << " ";
-		}
-		std::cout << std::endl;
-	}
 
     // Try to match each pattern in the neighborhood around middleIndex
     for (auto &pat : patterns)
@@ -493,7 +477,6 @@ bool Gomoku::analyzeSequenceForThreats(const std::vector<int> &sequence, int pla
                 }
             }
             if (match) {
-				std::cout << "Matched pattern at offset " << offset << std::endl;
                 return true;
             }
         }
@@ -501,6 +484,71 @@ bool Gomoku::analyzeSequenceForThreats(const std::vector<int> &sequence, int pla
 
     return false;
 }
+
+int Gomoku::getNumberOfThreats(int player)
+{
+    std::vector<std::pair<int, int>> pebbles = getAllPebblesOfPlayer(player);
+    int threats = 0;
+
+    std::vector<std::vector<int>> patterns = {
+        {0, player, player, player, 0},
+        {0, player, player, 0, player, 0},
+        {0, player, 0, player, player, 0}
+    };
+
+    std::vector<std::pair<int, int>> directions = {
+        {0, 1}, {1, 0}, {1, 1}, {1, -1}
+    };
+
+    for (auto &[row, col] : pebbles)
+    {
+        for (auto &[dr, dc] : directions)
+        {
+            for (const auto &pattern : patterns)
+            {
+                if (checkPattern(row, col, dr, dc, pattern) || checkPattern(row, col, -dr, -dc, pattern))
+                {
+                    threats++;
+                    break;
+                }
+            }
+        }
+    }
+    return threats;
+}
+
+bool Gomoku::checkPattern(int startRow, int startCol, int dr, int dc, const std::vector<int> &pattern)
+{
+    int patternLength = pattern.size();
+    std::vector<std::pair<int, int>> offsets;
+
+    for (int i = 0; i < patternLength; i++)
+    {
+        offsets.emplace_back(i * dr, i * dc);
+    }
+
+    for (int shift = -patternLength + 1; shift <= 0; shift++)
+    {
+        bool match = true;
+        for (size_t idx = 0; idx < pattern.size(); idx++)
+        {
+            int row = startRow + offsets[idx].first + shift * dr;
+            int col = startCol + offsets[idx].second + shift * dc;
+
+            if (!isWithinBounds(row, col) || board[row][col] != pattern[idx])
+            {
+                match = false;
+                break;
+            }
+        }
+        if (match)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 /**
  * Check if the current player has captured at least 10 opponent pebbles.

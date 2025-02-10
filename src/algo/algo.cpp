@@ -6,7 +6,12 @@
 #include <limits>       // std::numeric_limits
 #include <cstdlib>      // std::rand, std::srand
 #include <ctime>        // std::time
-
+#include <vector>
+#include <utility>
+#include <iostream>
+#include <thread>
+#include <future>
+#include <random>
 
 GomokuAI::GomokuAI(const Gomoku& gomoku)
     : m_gomoku(gomoku.clone())
@@ -38,8 +43,8 @@ double GomokuAI::get_score_for_position()
     //   BLACK is the opponent (negative)
     //
     // Let's replicate that logic. We'll define:
-    int num_threat_white = _get_number_of_threats(WHITE);
-    int num_threat_black = _get_number_of_threats(BLACK);
+    int num_threat_white = m_gomoku.getNumberOfThreats(WHITE);
+    int num_threat_black = m_gomoku.getNumberOfThreats(BLACK);
 
     // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
     // But these are private.  If needed, you can add getters in Gomoku:
@@ -60,8 +65,7 @@ double GomokuAI::get_score_for_position()
 
 ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 {
-    // If forced_moves is non-empty, we must use them:
-    std::vector<std::pair<int,int>> possible_moves;
+    std::vector<std::pair<int, int>> possible_moves;
 
     if (!m_gomoku.getForcedMoves().empty()) {
         possible_moves = m_gomoku.getForcedMoves();
@@ -69,47 +73,78 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
         possible_moves = m_gomoku.getAllCloseMoves();
     }
 
-	// cgeck if possible moves is empty, pritn smth if so
-	if (possible_moves.empty()) {
-		std::cout << "No possible moves\n";
-	}
-
-    // If there are no moves:
-	// TODO fix this
     if (possible_moves.empty()) {
+        std::cout << "No possible moves\n";
         return std::make_pair(0.0, std::make_pair(-1, -1));
     }
 
-    // Evaluate each move to find the best (max or min)
     double best_score = is_maximizing ? minus_infinity() : plus_infinity();
-    std::vector<std::pair<int,int>> best_moves;
+    std::vector<std::pair<int, int>> best_moves;
 
-    for (auto& mv : possible_moves) {
-        int row = mv.first;
-        int col = mv.second;
+    // If first pass, use multi-threading
+    if (is_first) {
+        std::vector<std::future<std::pair<double, std::pair<int, int>>>> futures;
 
-        // Evaluate that move
-        auto [score, move] = evaluate_move(row, col, depth, is_maximizing);
+        for (auto& mv : possible_moves) {
+            futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing]() {
+                return evaluate_move(mv.first, mv.second, depth, is_maximizing);
+            }));
+        }
 
-        // Compare result:
-        if (is_maximizing) {
-            if (score > best_score) {
-                best_score = score;
-                best_moves.clear();
-                best_moves.push_back(move);
-            } else if (score == best_score) {
-                best_moves.push_back(move);
+        for (auto& fut : futures) {
+            auto [score, move] = fut.get();
+
+            if (is_maximizing) {
+                if (score > best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
+            } else {
+                if (score < best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
             }
-        } else {
-            if (score < best_score) {
-                best_score = score;
-                best_moves.clear();
-                best_moves.push_back(move);
-            } else if (score == best_score) {
-                best_moves.push_back(move);
+        }
+    } else { // Normal sequential evaluation
+        for (auto& mv : possible_moves) {
+            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing);
+
+            if (is_maximizing) {
+                if (score > best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
+            } else {
+                if (score < best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
             }
         }
     }
+
+    if (!best_moves.empty()) {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
+        return std::make_pair(best_score, best_moves[distr(gen)]);
+    } else {
+        return std::make_pair(best_score, std::make_pair(-1, -1));
+    }
+
 
     // Pick randomly among the best moves
     if (!best_moves.empty()) {
@@ -152,13 +187,4 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
         auto [child_score, child_move] = temp_ai.minmax(depth - 1, !is_maximizing, false);
         return std::make_pair(child_score, std::make_pair(row, col));
     }
-}
-
-// Placeholder method to mimic your Python `_get_number_of_threats`
-int GomokuAI::_get_number_of_threats(int /*player*/)
-{
-    // In your Python code, you have `gomoku._get_number_of_threats(player)`
-    // that presumably looks for "three-structures" or "four-structures" on the board, etc.
-    // This method is a stub. You should implement actual logic if you need an accurate score.
-    return 0;
 }

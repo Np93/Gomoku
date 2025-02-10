@@ -40,6 +40,7 @@ public:
 	int getBoardSize() const;
     
 	bool isDoubleThree(int row, int col);
+	int getNumberOfThreats(int player);
 
 	// GETTERS
 	int getBoardValue(int row, int col) const;
@@ -66,6 +67,8 @@ private:
     void changePlayer();
     void undoMove(int row, int col);
     bool isWithinBounds(int r, int c) const;
+
+	bool checkPattern(int startRow, int startCol, int dr, int dc, const std::vector<int> &pattern);
 
     std::vector<std::pair<int,int>> getAllPebblesOfPlayer(int player) const;
 
