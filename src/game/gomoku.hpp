@@ -75,8 +75,6 @@ private:
     bool processForcedMove(int placedRow, int placedCol);
     bool processCapture(int placedRow, int placedCol);
 
-    bool analyzeSequenceForThreats(const std::vector<int> &sequence, int player, int middleIndex);
-
     bool has10Pebbles() const;
     bool process10Pebbles();
     bool has5PebblesAligned(int placedRow, int placedCol) const;

@@ -427,58 +427,15 @@ bool Gomoku::isDoubleThree(int row, int col)
             }
         }
 
-        // If this direction creates a "three threat", increment threats
-        if (analyzeSequenceForThreats(colorSequence, currentPlayer, iPos)) {
-            threats++;
-        }
+		// If this direction creates a "three threat", increment threats
+		if (checkPattern(row, col, dr, dc, {0, currentPlayer, currentPlayer, currentPlayer, 0}) ||
+			checkPattern(row, col, dr, dc, {0, currentPlayer, currentPlayer, 0, currentPlayer, 0}) ||
+			checkPattern(row, col, dr, dc, {0, currentPlayer, 0, currentPlayer, currentPlayer, 0})) {
+			threats++;
+		}
 
-        if (threats >= 2) {
+		if (threats >= 2) {
             return true; // double-three
-        }
-    }
-
-    return false;
-}
-
-/**
- * Analyze a sequence of stones around the newly placed stone to see if
- * it forms an "open three" or similar threat pattern that includes
- * the placed stone.
- */
-bool Gomoku::analyzeSequenceForThreats(const std::vector<int> &sequence, int player, int middleIndex)
-{
-    // Patterns to detect around the middle stone
-    std::vector<std::vector<int>> patterns = {
-        {0, player, player, player, 0},
-        {0, player, player, 0, player, 0},
-        {0, player, 0, player, player, 0}
-    };
-
-    int seqLen = (int)sequence.size();
-
-    // Try to match each pattern in the neighborhood around middleIndex
-    for (auto &pat : patterns)
-    {
-        int patLen = (int)pat.size();
-        // We'll try sliding a window around middleIndex
-        for (int offset = -3; offset <= 2; offset++)
-        {
-            int startIdx = middleIndex + offset;
-            if (startIdx < 0 || startIdx + patLen > seqLen) {
-                continue;
-            }
-            // Check if we match the pattern
-            bool match = true;
-            for (int i = 0; i < patLen; i++)
-            {
-                if (sequence[startIdx + i] != pat[i]) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) {
-                return true;
-            }
         }
     }
 
