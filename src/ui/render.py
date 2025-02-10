@@ -32,11 +32,13 @@ BOARD_COLOR = (205, 133, 63)  # Light brown for the board
 GRID_COLOR = (0, 0, 0)        # Color for the grid lines
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+GRAY = (169, 169, 169)
 TEXT_COLOR = (0, 0, 0)        # Color for the text
 WINNER_COLOR = (255, 0, 0)
 BUTTON_COLOR = (70, 130, 180) # Color for buttons in the menu
 BUTTON_HOVER_COLOR = (100, 149, 237) # Hover color for buttons
 QUIT_BUTTON_COLOR = (220, 20, 60)    # Color for the quit button
+QUIT_BUTTON_HOVER_COLOR = (255, 69, 0)
 
 # Stone size (based on cell_size)
 pion_radius = cell_size // 2.5  # Adjusted size for larger stones
@@ -125,6 +127,31 @@ def handle_quit_button(mouse_pos, quit_center, radius):
 		pygame.quit()
 		quit()
 
+
+def draw_animated_stone(row, col, final_color, duration=0.3):
+    """Animate the placement of a stone starting from gray to the final color."""
+    steps = 10
+    max_radius = pion_radius
+    for step in range(steps):
+        radius = int(max_radius * (step + 1) / steps)
+        intermediate_color = (
+            GRAY
+        )
+        pygame.draw.circle(screen, intermediate_color, (
+            border_size + cell_size // 2 + col * cell_size,
+            border_size + cell_size // 2 + row * cell_size
+        ), radius)
+        pygame.display.flip()
+        time.sleep(duration / steps)
+
+# def draw_background(): en test pour l'instant c'est de la merde de damier
+#     """Draw a patterned background for the game."""
+#     screen.fill(BORDER_COLOR)
+#     for x in range(0, total_screen_width, cell_size):
+#         for y in range(0, total_screen_height, cell_size):
+#             rect = pygame.Rect(x, y, cell_size, cell_size)
+#             color = (210, 180, 140) if (x // cell_size + y // cell_size) % 2 == 0 else (160, 82, 45)
+#             pygame.draw.rect(screen, color, rect)
 
 def main_menu():
 	"""Display the main menu and handle user interaction."""
@@ -361,6 +388,34 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
 		text_rect = winner_text.get_rect(center=(border_size + screen_size // 2, border_size + screen_size // 2))
 		screen.blit(winner_text, text_rect)
 
+
+def update_opponent_time(player_times: dict, current_player: int, turn_start_time: float) -> float:
+    if turn_start_time:
+        # the player and modify before in process_move so we want the player from before
+        opponent_player = -current_player
+        turn_duration = time.time() - turn_start_time
+        player_times[opponent_player]["total_time"] += turn_duration
+        player_times[opponent_player]["last_time"] = turn_duration
+        return None
+    return turn_start_time
+
+def reset_player_times(player_times: dict) -> None:
+    for player in player_times.keys():
+        player_times[player]["total_time"] = 0
+        player_times[player]["last_time"] = 0
+
+def initialize_game(game_mode: str) -> tuple:
+    gomoku = Gomoku()
+    ia_player = None
+    running = True
+    game_over = False
+    winner = None
+
+    if game_mode == "special":
+        ia_player = random.choice([PlayerToken.BLACK.value, PlayerToken.WHITE.value])
+    elif game_mode == "normal":
+        ia_player = PlayerToken.WHITE.value
+    return gomoku, ia_player, running, game_over, winner
 
 def render_game_ui():
 	global message_start_time, exit_game, turn_start_time
