@@ -1,0 +1,164 @@
+#include "algo.hpp"
+#include "gomoku.hpp" // Include your existing Gomoku header or the header where Gomoku is declared
+
+#include <iostream>
+#include <algorithm>    // std::max, std::min
+#include <limits>       // std::numeric_limits
+#include <cstdlib>      // std::rand, std::srand
+#include <ctime>        // std::time
+
+
+GomokuAI::GomokuAI(const Gomoku& gomoku)
+    : m_gomoku(gomoku.clone())
+{
+    // Seed random generator (if you haven't done so elsewhere)
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
+}
+
+std::pair<int,int> GomokuAI::random_move()
+{
+    // In your Python code, random_move picks from either get_all_possible_moves(player)
+    // But in your C++ code, Gomoku's get_all_possible_moves() always returns empties
+    // for the *current* player. We'll just call get_all_possible_moves().
+    auto moves = m_gomoku.getAllPossibleMoves();
+    if (moves.empty()) {
+        return std::make_pair(-1, -1);
+    }
+    // Pick a random index
+    int idx = std::rand() % moves.size();
+    return moves[idx];
+}
+
+double GomokuAI::get_score_for_position()
+{
+    // "score = (number_of_threat_white - number_of_threat_black)/3 * 10"
+    // plus difference in pebbles_taken * 10
+    // In Python, you used: 
+    //   WHITE is the AI (positive)
+    //   BLACK is the opponent (negative)
+    //
+    // Let's replicate that logic. We'll define:
+    int num_threat_white = _get_number_of_threats(WHITE);
+    int num_threat_black = _get_number_of_threats(BLACK);
+
+    // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
+    // But these are private.  If needed, you can add getters in Gomoku:
+    //    int getWhiteCaptures() const { return white_player_pebbles_taken; }
+    //    int getBlackCaptures() const { return black_player_pebbles_taken; }
+    // For now, let's assume we have those getters. If not, you can inline directly
+    // as needed (this requires modifying Gomoku to make them public or friend).
+    // We'll pretend we have:
+    int white_captures = m_gomoku.getWhitePlayerPebblesTaken(); // you must implement
+    int black_captures = m_gomoku.getBlackPlayerPebblesTaken(); // you must implement
+
+    double score = 0.0;
+    score += (num_threat_white - num_threat_black) / 3.0 * 10.0;
+    score += (white_captures - black_captures) * 10.0;
+
+    return score;
+}
+
+ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
+{
+    // If forced_moves is non-empty, we must use them:
+    std::vector<std::pair<int,int>> possible_moves;
+
+    if (!m_gomoku.getForcedMoves().empty()) {
+        possible_moves = m_gomoku.getForcedMoves();
+    } else {
+        possible_moves = m_gomoku.getAllCloseMoves();
+    }
+
+	// cgeck if possible moves is empty, pritn smth if so
+	if (possible_moves.empty()) {
+		std::cout << "No possible moves\n";
+	}
+
+    // If there are no moves:
+	// TODO fix this
+    if (possible_moves.empty()) {
+        return std::make_pair(0.0, std::make_pair(-1, -1));
+    }
+
+    // Evaluate each move to find the best (max or min)
+    double best_score = is_maximizing ? minus_infinity() : plus_infinity();
+    std::vector<std::pair<int,int>> best_moves;
+
+    for (auto& mv : possible_moves) {
+        int row = mv.first;
+        int col = mv.second;
+
+        // Evaluate that move
+        auto [score, move] = evaluate_move(row, col, depth, is_maximizing);
+
+        // Compare result:
+        if (is_maximizing) {
+            if (score > best_score) {
+                best_score = score;
+                best_moves.clear();
+                best_moves.push_back(move);
+            } else if (score == best_score) {
+                best_moves.push_back(move);
+            }
+        } else {
+            if (score < best_score) {
+                best_score = score;
+                best_moves.clear();
+                best_moves.push_back(move);
+            } else if (score == best_score) {
+                best_moves.push_back(move);
+            }
+        }
+    }
+
+    // Pick randomly among the best moves
+    if (!best_moves.empty()) {
+        int idx = std::rand() % best_moves.size();
+        return std::make_pair(best_score, best_moves[idx]);
+    } else {
+        // Fallback if somehow no best_moves
+        return std::make_pair(best_score, std::make_pair(-1, -1));
+    }
+}
+
+ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing)
+{
+    // We'll create a temporary clone of the Gomoku state to simulate
+    Gomoku cloned_state = m_gomoku.clone();
+    // Attempt to place the move
+    auto [valid_move, reason] = cloned_state.processMove(row, col);
+
+    // If it's invalid, return +∞ or -∞ so the minmax can discard it
+    if (!valid_move) {
+        double bad_score = is_maximizing ? minus_infinity() : plus_infinity();
+        return std::make_pair(bad_score, std::make_pair(row, col));
+    }
+
+    if (cloned_state.getGameStatus()) {
+        double terminal_score = is_maximizing ? plus_infinity() : minus_infinity();
+        return std::make_pair(terminal_score, std::make_pair(row, col));
+    }
+
+    // Not at terminal => either compute heuristic (if depth == 1) or do recursive minmax
+    if (depth <= 1) {
+        // Evaluate the position heuristically
+        // We create a temporary AI to compute the score from the cloned_state
+        GomokuAI temp_ai(cloned_state);
+        double score = temp_ai.get_score_for_position();
+        return std::make_pair(score, std::make_pair(row, col));
+    } else {
+        // Recurse
+        GomokuAI temp_ai(cloned_state);
+        auto [child_score, child_move] = temp_ai.minmax(depth - 1, !is_maximizing, false);
+        return std::make_pair(child_score, std::make_pair(row, col));
+    }
+}
+
+// Placeholder method to mimic your Python `_get_number_of_threats`
+int GomokuAI::_get_number_of_threats(int /*player*/)
+{
+    // In your Python code, you have `gomoku._get_number_of_threats(player)`
+    // that presumably looks for "three-structures" or "four-structures" on the board, etc.
+    // This method is a stub. You should implement actual logic if you need an accurate score.
+    return 0;
+}

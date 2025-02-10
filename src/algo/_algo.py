@@ -85,7 +85,7 @@ class GomokuAI:
 			:param is_maximizing: Boolean indicating if it is the maximizing player's turn.
 			:return: (best_score, best_move)
 			"""
-			possible_moves = self.gomoku.get_all_close_moves()  # List of (row, col)
+			possible_moves = self.gomoku.getAllCloseMoves()  # List of (row, col)
 			if self.gomoku.forced_moves:
 				possible_moves = self.gomoku.forced_moves
 
