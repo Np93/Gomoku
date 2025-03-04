@@ -57,6 +57,7 @@ player_times = {
 }
 turn_start_time = None
 
+ai_process_time = 0
 
 def draw_forbidden_message(message):
     """
@@ -83,7 +84,7 @@ def draw_forbidden_message(message):
 
     # Dessine chaque ligne
     message_x = screen_size + 2 * border_size  # Position dans le panneau latéral
-    message_y = 300  # Position de départ pour le message
+    message_y = 350  # Position de départ pour le message
     line_spacing = 35  # Espacement entre les lignes
 
     for line in lines:
@@ -305,6 +306,13 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
     screen.blit(black_time_text, (text_x, time_start_y))
     screen.blit(white_time_text, (text_x, time_start_y + line_spacing))
 
+    if ai_process_time > 0:
+        ia_time_text = font.render(
+            f"Process IA : {ai_process_time:.3f}s", 
+            True, TEXT_COLOR
+        )
+        screen.blit(ia_time_text, (text_x, time_start_y + 2 * line_spacing))
+
     # Afficher un message d'erreur, si nécessaire
     if forbidden_message:
         draw_forbidden_message(forbidden_message)
@@ -353,7 +361,11 @@ def render_game_ui():
 
     def handle_ai_turn(gomoku, ia_player, ai, player_times, message_start_time):
         """Handle the AI's turn."""
+        global ai_process_time
+        time_ai_start = time.time()
         score, best_move = ai.minmax(3, True, True)
+        time_ai_end = time.time()
+        ai_process_time = time_ai_end - time_ai_start
         if best_move:
             row, col = best_move
             is_valid, forbidden_message = gomoku.processMove(row, col)
@@ -384,7 +396,7 @@ def render_game_ui():
         
         return None, message_start_time, gomoku.getGameStatus(), is_valid, col, row
 
-    global message_start_time, exit_game, turn_start_time
+    global message_start_time, exit_game, turn_start_time, ai_process_time
     forbidden_message = None
 
     while not exit_game:
@@ -394,7 +406,6 @@ def render_game_ui():
             gomoku, ia_player, running, game_over, winner = initialize_game(game_mode)
 
             while running:
-                
                 draw_board(gomoku, winner, forbidden_message)
                 forbidden_message, message_start_time = reset_forbidden_message(forbidden_message, message_start_time, message_duration)
                 pygame.display.flip()
@@ -432,6 +443,7 @@ def render_game_ui():
                     winner = "Noir" if gomoku.getCurrentPlayer() == PlayerToken.BLACK.value else "Blanc"            
                 if game_over:
                     reset_player_times(player_times)
+                    ai_process_time = 0
                     action = end_game_menu(winner)
                     if action == "replay":
                         gomoku = Gomoku()
