@@ -164,15 +164,15 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
     auto [valid_move, reason] = cloned_state.processMove(row, col);
 
     // If it's invalid, return +∞ or -∞ so the minmax can discard it
-    if (!valid_move) {
-        double bad_score = is_maximizing ? minus_infinity() : plus_infinity();
-        return std::make_pair(bad_score, std::make_pair(row, col));
-    }
+	if (!valid_move) {
+		double bad_score = (is_maximizing ? -1000000.0 - depth: 1000000.0 + depth);
+		return std::make_pair(bad_score, std::make_pair(row, col));
+	}
 
-    if (cloned_state.getGameStatus()) {
-        double terminal_score = is_maximizing ? plus_infinity() : minus_infinity();
-        return std::make_pair(terminal_score, std::make_pair(row, col));
-    }
+	if (cloned_state.getGameStatus()) {
+		double terminal_score = (is_maximizing ? 1000000.0 + depth : -1000000.0 - depth);
+		return std::make_pair(terminal_score, std::make_pair(row, col));
+	}
 
     // Not at terminal => either compute heuristic (if depth == 1) or do recursive minmax
     if (depth <= 1) {
