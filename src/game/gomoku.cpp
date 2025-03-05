@@ -652,3 +652,10 @@ bool Gomoku::process5Pebbles(int placedRow, int placedCol)
     }
     return false;
 }
+
+bool Gomoku::isBoardEmpty() const
+{
+    return !std::any_of(board.begin(), board.end(), [](const std::vector<int>& row) {
+        return std::any_of(row.begin(), row.end(), [](int cell) { return cell != EMPTY; });
+    });
+}
