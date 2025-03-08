@@ -56,6 +56,8 @@ public:
 	void setBlackPlayerPebblesTaken(int pebbles);
 	void setWhitePlayerPebblesTaken(int pebbles);
 
+	std::string computeStateHash() const;
+
 private:
     int boardSize;
     std::vector<std::vector<int>> board;
@@ -64,6 +66,7 @@ private:
     int blackPlayerPebblesTaken;
     std::vector<std::pair<int,int>> forcedMoves;
     bool gameOver;
+
 
     void changePlayer();
     void undoMove(int row, int col);

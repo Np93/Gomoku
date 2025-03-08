@@ -246,6 +246,25 @@ void Gomoku::setWhitePlayerPebblesTaken(int pebbles)
 
 // PRIVATE METHODS
 
+std::string Gomoku::computeStateHash() const
+{
+	std::string hash;
+	hash.reserve(boardSize * boardSize + 2 * sizeof(int)); // Reserve space for efficiency
+
+	for (const auto& row : board)
+	{
+		for (int cell : row)
+		{
+			hash += std::to_string(cell);
+		}
+	}
+
+	hash += std::to_string(whitePlayerPebblesTaken);
+	hash += std::to_string(blackPlayerPebblesTaken);
+
+	return hash;
+}
+
 void Gomoku::changePlayer()
 {
     currentPlayer = -currentPlayer; // black = 1, white = -1
