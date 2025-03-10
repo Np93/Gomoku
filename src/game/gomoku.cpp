@@ -14,9 +14,7 @@ void debugCall(const std::function<void()>& func)
     }
 }
 
-Gomoku::Gomoku()
-{
-    boardSize = 19;
+Gomoku::Gomoku(int boardSize) : boardSize(boardSize) {
     board.resize(boardSize, std::vector<int>(boardSize, EMPTY));
     currentPlayer = BLACK;
     whitePlayerPebblesTaken = 0;
@@ -651,4 +649,11 @@ bool Gomoku::process5Pebbles(int placedRow, int placedCol)
         }
     }
     return false;
+}
+
+bool Gomoku::isBoardEmpty() const
+{
+    return !std::any_of(board.begin(), board.end(), [](const std::vector<int>& row) {
+        return std::any_of(row.begin(), row.end(), [](int cell) { return cell != EMPTY; });
+    });
 }

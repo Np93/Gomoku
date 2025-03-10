@@ -24,7 +24,7 @@ constexpr int WHITE = 1;
 class Gomoku
 {
 public:
-    Gomoku();
+    explicit Gomoku(int boardSize = 19);
     Gomoku clone() const;
 
 	void addTiles(const std::vector<std::pair<int,int>> &tiles, const int player);
@@ -41,6 +41,7 @@ public:
     
 	bool isDoubleThree(int row, int col);
 	int getNumberOfThreats(int player);
+    bool isBoardEmpty() const;
 
 	// GETTERS
 	int getBoardValue(int row, int col) const;

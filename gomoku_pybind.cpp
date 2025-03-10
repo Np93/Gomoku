@@ -10,7 +10,7 @@ PYBIND11_MODULE(cpp_gomoku, m) {
 	m.doc() = "Pybind11 bindings for Gomoku C++ class";
 
 	py::class_<Gomoku>(m, "Gomoku")
-		.def(py::init<>())
+		.def(py::init<int>(), py::arg("boardSize") = 19)
 		.def("clone", &Gomoku::clone)
 		.def("addTiles",&Gomoku::addTiles, py::arg("tiles"), py::arg("player"))
 		.def("processMove", &Gomoku::processMove)

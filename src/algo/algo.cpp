@@ -65,6 +65,11 @@ double GomokuAI::get_score_for_position()
 
 ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 {
+    if (m_gomoku.isBoardEmpty()) {
+        auto move = random_move();
+        return std::make_pair(0.0, move);
+    }
+
     std::vector<std::pair<int, int>> possible_moves;
 
     if (!m_gomoku.getForcedMoves().empty()) {
