@@ -12,6 +12,10 @@
 #include <thread>
 #include <future>
 #include <random>
+#include <shared_mutex> // Include for shared_mutex
+
+std::unordered_map<std::string, double> transposition_table;
+std::shared_mutex transposition_mutex; // Use shared mutex
 
 GomokuAI::GomokuAI(const Gomoku& gomoku)
     : m_gomoku(gomoku.clone())
@@ -147,6 +151,11 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
         std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
         return std::make_pair(best_score, best_moves[distr(gen)]);
     } else {
+		// // Clean the transposition table
+		// {
+		// 	std::unique_lock<std::shared_mutex> lock(transposition_mutex);
+		// 	transposition_table.clear();
+		// }
         return std::make_pair(best_score, std::make_pair(-1, -1));
     }
 
@@ -182,9 +191,26 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
     // Not at terminal => either compute heuristic (if depth == 1) or do recursive minmax
     if (depth <= 1) {
         // Evaluate the position heuristically
-        // We create a temporary AI to compute the score from the cloned_state
-        GomokuAI temp_ai(cloned_state);
-        double score = temp_ai.get_score_for_position();
+		std::string key = cloned_state.computeStateHash();
+
+		//  Check if the state is in the transposition table
+		{
+			std::shared_lock<std::shared_mutex> lock(transposition_mutex);
+			auto it = transposition_table.find
+				(key);
+			if (it != transposition_table.end()) {
+				return std::make_pair(it->second, std::make_pair(row, col));
+			}
+		}
+
+        double score = get_score_for_position();
+
+		// Add the state to the transposition table
+		{
+			std::unique_lock<std::shared_mutex> lock(transposition_mutex);
+			transposition_table[key] = score;
+		}
+
         return std::make_pair(score, std::make_pair(row, col));
     } else {
         // Recurse
