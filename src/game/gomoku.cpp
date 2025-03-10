@@ -466,13 +466,22 @@ int Gomoku::getNumberOfThreats(int player)
     std::vector<std::pair<int, int>> pebbles = getAllPebblesOfPlayer(player);
     int threats = 0;
 
-    std::vector<std::vector<int>> patterns = {
+    static const std::vector<std::vector<int>> patterns = {
         {0, player, player, player, 0},
         {0, player, player, 0, player, 0},
         {0, player, 0, player, player, 0}
     };
 
-    std::vector<std::pair<int, int>> directions = {
+    static const std::vector<std::vector<int>> reversedPatterns = []() {
+        std::vector<std::vector<int>> revPatterns;
+        for (const auto &pattern : patterns) {
+            std::vector<int> revPattern(pattern.rbegin(), pattern.rend());
+            revPatterns.push_back(revPattern);
+        }
+        return revPatterns;
+    }();
+
+    static const std::vector<std::pair<int, int>> directions = {
         {0, 1}, {1, 0}, {1, 1}, {1, -1}
     };
 
@@ -482,16 +491,17 @@ int Gomoku::getNumberOfThreats(int player)
         {
             for (const auto &pattern : patterns)
             {
-                if (checkPattern(row, col, dr, dc, pattern) || checkPattern(row, col, -dr, -dc, pattern))
+                if (checkPattern(row, col, dr, dc, pattern) || checkPattern(row, col, dr, dc, reversedPatterns[&pattern - &patterns[0]]))
                 {
                     threats++;
-                    break;
+                    break; // Stop checking once a threat is found in this direction
                 }
             }
         }
     }
     return threats;
 }
+
 
 bool Gomoku::checkPattern(int startRow, int startCol, int dr, int dc, const std::vector<int> &pattern)
 {

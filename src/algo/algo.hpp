@@ -6,6 +6,8 @@
 #include <vector>
 #include <utility>
 #include "gomoku.hpp" // Include your existing Gomoku header or the header where Gomoku is declared
+#include <chrono>
+#include <atomic>
 
 // Simple helper to represent a move-evaluation result
 //   first  = numeric score
@@ -44,6 +46,7 @@ private:
     Gomoku m_gomoku;
     // Depth for minimax
     int m_depth;
+	std::atomic<bool> time_up = false;
 
     // Evaluate a single move (similar to the python `evaluate_move` function).
     // Returns (score, (row,col)).

@@ -13,6 +13,9 @@
 #include <future>
 #include <random>
 #include <shared_mutex> // Include for shared_mutex
+#include <iomanip>      // Include for std::setprecision
+#include <chrono>
+#include <atomic>
 
 std::unordered_map<std::string, double> transposition_table;
 std::shared_mutex transposition_mutex; // Use shared mutex
@@ -69,105 +72,103 @@ double GomokuAI::get_score_for_position()
 
 ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 {
-    if (m_gomoku.isBoardEmpty()) {
-        auto move = random_move();
-        return std::make_pair(0.0, move);
-    }
+	auto start_time = std::chrono::steady_clock::now();
+	auto time_limit = std::chrono::milliseconds(450); // 0.5 second limit
 
-    std::vector<std::pair<int, int>> possible_moves;
+	if (m_gomoku.isBoardEmpty()) {
+		return {0.0, random_move()};
+	}
 
-    if (!m_gomoku.getForcedMoves().empty()) {
-        possible_moves = m_gomoku.getForcedMoves();
-    } else {
-        possible_moves = m_gomoku.getAllCloseMoves();
-    }
+	std::vector<std::pair<int, int>> possible_moves =
+		!m_gomoku.getForcedMoves().empty() ? m_gomoku.getForcedMoves() : m_gomoku.getAllCloseMoves();
 
-    if (possible_moves.empty()) {
-        std::cout << "No possible moves\n";
-        return std::make_pair(0.0, std::make_pair(-1, -1));
-    }
+	// Randomize move order
+	static std::random_device rd;
+	static std::mt19937 g(rd());
+	std::shuffle(possible_moves.begin(), possible_moves.end(), g);
 
-    double best_score = is_maximizing ? minus_infinity() : plus_infinity();
-    std::vector<std::pair<int, int>> best_moves;
+	if (possible_moves.empty()) {
+		std::cout << "No possible moves\n";
+		return {0.0, {-1, -1}};
+	}
 
-    // If first pass, use multi-threading
-    if (is_first) {
-        std::vector<std::future<std::pair<double, std::pair<int, int>>>> futures;
+	std::atomic<bool> time_up(false);
+	std::mutex results_mutex;
 
-        for (auto& mv : possible_moves) {
-            futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing]() {
-                return evaluate_move(mv.first, mv.second, depth, is_maximizing);
-            }));
-        }
+	double best_score = is_maximizing ? minus_infinity() : plus_infinity();
+	std::vector<std::pair<int, int>> best_moves;
 
-        for (auto& fut : futures) {
-            auto [score, move] = fut.get();
+	auto evaluate_wrapper = [&](const std::pair<int, int>& mv) {
+		if (time_up.load()) return;
 
-            if (is_maximizing) {
-                if (score > best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            } else {
-                if (score < best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            }
-        }
-    } else { // Normal sequential evaluation
-        for (auto& mv : possible_moves) {
-            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing);
+		double score = evaluate_move(mv.first, mv.second, depth, is_maximizing).first;
 
-            if (is_maximizing) {
-                if (score > best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            } else {
-                if (score < best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            }
-        }
-    }
+		std::lock_guard<std::mutex> lock(results_mutex);
 
-    if (!best_moves.empty()) {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
-        std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
-        return std::make_pair(best_score, best_moves[distr(gen)]);
-    } else {
-		// // Clean the transposition table
-		// {
-		// 	std::unique_lock<std::shared_mutex> lock(transposition_mutex);
-		// 	transposition_table.clear();
-		// }
-        return std::make_pair(best_score, std::make_pair(-1, -1));
-    }
+		if ((is_maximizing && score > best_score) || (!is_maximizing && score < best_score)) {
+			best_score = score;
+			best_moves = {mv};
+		} else if (score == best_score) {
+			best_moves.push_back(mv);
+		}
+	};
 
+	if (is_first) {
+		unsigned int max_threads = std::thread::hardware_concurrency() * 4;
+		std::cout << "Max threads: " << max_threads << std::endl;
+		std::vector<std::thread> threads;
+		threads.reserve(max_threads);
 
-    // Pick randomly among the best moves
-    if (!best_moves.empty()) {
-        int idx = std::rand() % best_moves.size();
-        return std::make_pair(best_score, best_moves[idx]);
-    } else {
-        // Fallback if somehow no best_moves
-        return std::make_pair(best_score, std::make_pair(-1, -1));
-    }
+		for (const auto& mv : possible_moves) {
+			if (threads.size() >= max_threads) {
+				for (auto& thread : threads) {
+					if (thread.joinable()) thread.join();
+				}
+				threads.clear();
+			}
+			threads.emplace_back(evaluate_wrapper, mv);
+		}
+
+		for (auto& thread : threads) {
+			if (std::chrono::steady_clock::now() - start_time > time_limit) {
+				time_up = true;
+				break;
+			}
+			if (thread.joinable()) thread.join();
+		}
+
+		// Ensure all threads are joined
+		for (auto& thread : threads) {
+			if (thread.joinable()) thread.join();
+		}
+
+	} else {
+		// Non-first level recursive calls run synchronously (no threads)
+		for (auto& mv : possible_moves) {
+			if (std::chrono::steady_clock::now() - start_time > time_limit) {
+				time_up = true;
+				break;
+			}
+
+			evaluate_wrapper(mv);
+		}
+	}
+
+	if (!best_moves.empty()) {
+		if (time_up) {
+			// if this is the main thread, set the time_up flag to true
+			return {best_score, best_moves[0]};
+		} else {
+			// Pick randomly from best moves if there's still time
+			static std::random_device rd;
+			static std::mt19937 gen(rd());
+			std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
+			return {best_score, best_moves[distr(gen)]};
+		}
+	}
+	
+	// No best moves found
+	return {best_score, {-1, -1}};
 }
 
 ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing)
