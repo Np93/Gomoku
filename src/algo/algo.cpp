@@ -53,6 +53,9 @@ double GomokuAI::get_score_for_position()
     int num_threat_white = m_gomoku.getNumberOfThreats(WHITE);
     int num_threat_black = m_gomoku.getNumberOfThreats(BLACK);
 
+	int num_4_aligned_white = m_gomoku.getNumberOf4Aligned(WHITE);
+	int num_4_aligned_black = m_gomoku.getNumberOf4Aligned(BLACK);
+
     // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
     // But these are private.  If needed, you can add getters in Gomoku:
     //    int getWhiteCaptures() const { return white_player_pebbles_taken; }
@@ -64,16 +67,23 @@ double GomokuAI::get_score_for_position()
     int black_captures = m_gomoku.getBlackPlayerPebblesTaken(); // you must implement
 
     double score = 0.0;
-    score += (num_threat_white - num_threat_black) / 3.0 * 10.0;
+    score += (num_threat_white - num_threat_black) / 3.0 * 8.0;
     score += (white_captures - black_captures) * 10.0;
+	score += (num_4_aligned_white - num_4_aligned_black) / 4.0 * 15.0;
 
     return score;
 }
 
 ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 {
+	static std::random_device rd;
+	static std::mt19937 g(rd());
+	
+	std::atomic<bool> time_up(false);
+	std::mutex results_mutex;
+
 	auto start_time = std::chrono::steady_clock::now();
-	auto time_limit = std::chrono::milliseconds(450); // 0.5 second limit
+	auto time_limit = std::chrono::milliseconds(5000000); // 0.5 second limit
 
 	if (m_gomoku.isBoardEmpty()) {
 		return {0.0, random_move()};
@@ -83,17 +93,12 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 		!m_gomoku.getForcedMoves().empty() ? m_gomoku.getForcedMoves() : m_gomoku.getAllCloseMoves();
 
 	// Randomize move order
-	static std::random_device rd;
-	static std::mt19937 g(rd());
 	std::shuffle(possible_moves.begin(), possible_moves.end(), g);
 
 	if (possible_moves.empty()) {
 		std::cout << "No possible moves\n";
 		return {0.0, {-1, -1}};
 	}
-
-	std::atomic<bool> time_up(false);
-	std::mutex results_mutex;
 
 	double best_score = is_maximizing ? minus_infinity() : plus_infinity();
 	std::vector<std::pair<int, int>> best_moves;
@@ -115,7 +120,6 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 
 	if (is_first) {
 		unsigned int max_threads = std::thread::hardware_concurrency() * 4;
-		std::cout << "Max threads: " << max_threads << std::endl;
 		std::vector<std::thread> threads;
 		threads.reserve(max_threads);
 
@@ -157,6 +161,7 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 	if (!best_moves.empty()) {
 		if (time_up) {
 			// if this is the main thread, set the time_up flag to true
+			if (is_first) std::cout << "Time up, returning best move so far\n";
 			return {best_score, best_moves[0]};
 		} else {
 			// Pick randomly from best moves if there's still time

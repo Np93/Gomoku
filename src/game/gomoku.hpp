@@ -41,6 +41,7 @@ public:
     
 	bool isDoubleThree(int row, int col);
 	int getNumberOfThreats(int player);
+	int getNumberOf4Aligned(int player) const;
     bool isBoardEmpty() const;
 
 	// GETTERS

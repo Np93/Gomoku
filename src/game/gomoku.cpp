@@ -502,6 +502,65 @@ int Gomoku::getNumberOfThreats(int player)
     return threats;
 }
 
+int Gomoku::getNumberOf4Aligned(int player) const
+{
+	int count = 0;
+	// Directions: horizontal, vertical, diagonals
+	std::vector<std::pair<int,int>> directions = {
+		{0,1}, {1,0}, {1,1}, {1,-1}
+	};
+
+	std::vector<std::pair<int, int>> pebbles = getAllPebblesOfPlayer(player);
+
+	for (auto &[r, c] : pebbles)
+	{
+		for (auto &dir : directions)
+		{
+			int dr = dir.first;
+			int dc = dir.second;
+
+			// Forward direction
+			int rr = r + dr;
+			int cc = c + dc;
+			int countPlayer = 1; // include the current pebble
+
+			bool is_blocked_backward = false;
+			bool is_blocked_forward = false;
+
+			while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+			{
+				countPlayer++;
+				rr += dr;
+				cc += dc;
+			}
+
+			// We are looking only for 4 pebble alignments without any opponent pebble at each end
+			if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
+				continue; // Move to the next direction
+
+			// Backward direction
+			rr = r - dr;
+			cc = c - dc;
+			while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+			{
+				countPlayer++;
+				rr -= dr;
+				cc -= dc;
+			}
+
+			// We are looking only for 4 pebble alignments without any opponent pebble at each end
+			if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
+				continue; // Move to the next direction
+
+			// Check if exactly 4 aligned and no opponent pebble at each end
+			if (countPlayer == 4)
+			{
+				count++;
+			}
+		}
+	}
+	return count;
+}
 
 bool Gomoku::checkPattern(int startRow, int startCol, int dr, int dc, const std::vector<int> &pattern)
 {
