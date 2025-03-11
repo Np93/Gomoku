@@ -83,7 +83,7 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 	std::mutex results_mutex;
 
 	auto start_time = std::chrono::steady_clock::now();
-	auto time_limit = std::chrono::milliseconds(5000000); // 0.5 second limit
+	auto time_limit = std::chrono::milliseconds(450); // 0.5 second limit
 
 	if (m_gomoku.isBoardEmpty()) {
 		return {0.0, random_move()};
