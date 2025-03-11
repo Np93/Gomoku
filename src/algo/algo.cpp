@@ -46,19 +46,23 @@ double GomokuAI::get_score_for_position()
     int num_threat_white = m_gomoku.getNumberOfThreats(WHITE);
     int num_threat_black = m_gomoku.getNumberOfThreats(BLACK);
 
-    // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
-    // But these are private.  If needed, you can add getters in Gomoku:
-    //    int getWhiteCaptures() const { return white_player_pebbles_taken; }
-    //    int getBlackCaptures() const { return black_player_pebbles_taken; }
-    // For now, let's assume we have those getters. If not, you can inline directly
-    // as needed (this requires modifying Gomoku to make them public or friend).
-    // We'll pretend we have:
-    int white_captures = m_gomoku.getWhitePlayerPebblesTaken(); // you must implement
-    int black_captures = m_gomoku.getBlackPlayerPebblesTaken(); // you must implement
-
     double score = 0.0;
     score += (num_threat_white - num_threat_black) / 3.0 * 10.0;
-    score += (white_captures - black_captures) * 10.0;
+
+    // Ajouter les captures uniquement si le mode est "duo" ou "normal"
+    std::string gameType = m_gomoku.getGameType();
+    if (gameType == "duo" || gameType == "normal") {
+        // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
+        // But these are private.  If needed, you can add getters in Gomoku:
+        //    int getWhiteCaptures() const { return white_player_pebbles_taken; }
+        //    int getBlackCaptures() const { return black_player_pebbles_taken; }
+        // For now, let's assume we have those getters. If not, you can inline directly
+        // as needed (this requires modifying Gomoku to make them public or friend).
+        // We'll pretend we have:
+        int white_captures = m_gomoku.getWhitePlayerPebblesTaken(); // you must implement
+        int black_captures = m_gomoku.getBlackPlayerPebblesTaken(); // you must implement
+        score += (white_captures - black_captures) * 10.0;
+    }
 
     return score;
 }

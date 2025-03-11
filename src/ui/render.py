@@ -340,7 +340,7 @@ def reset_player_times(player_times: dict) -> None:
 def initialize_game(game_mode: str) -> tuple:
     global board_size, screen_size
     board_size = 15 if game_mode == "special" else 19
-    gomoku = Gomoku(board_size)
+    gomoku = Gomoku(board_size, game_mode)
     screen_size = board_size * cell_size
     ia_player = None
     running = True
@@ -451,7 +451,7 @@ def render_game_ui():
                     action = end_game_menu(winner)
                     if action == "replay":
                         board_size = 15 if game_mode == "special" else 19
-                        gomoku = Gomoku(board_size)
+                        gomoku = Gomoku(board_size, game_mode)
                         if game_mode in ["normal", "special"]:
                             ai = GomokuAI(gomoku=gomoku)
                         game_over = False

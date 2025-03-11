@@ -10,7 +10,7 @@ PYBIND11_MODULE(cpp_gomoku, m) {
 	m.doc() = "Pybind11 bindings for Gomoku C++ class";
 
 	py::class_<Gomoku>(m, "Gomoku")
-		.def(py::init<int>(), py::arg("boardSize") = 19)
+		.def(py::init<int, std::string>(), py::arg("boardSize") = 19, py::arg("gameType") = "normal")
 		.def("clone", &Gomoku::clone)
 		.def("addTiles",&Gomoku::addTiles, py::arg("tiles"), py::arg("player"))
 		.def("processMove", &Gomoku::processMove)
@@ -18,6 +18,7 @@ PYBIND11_MODULE(cpp_gomoku, m) {
 		.def("isDoubleThree", &Gomoku::isDoubleThree, py::arg("row"), py::arg("col"))
 		.def("getNumberOfThreats", &Gomoku::getNumberOfThreats, py::arg("player"))
 		.def("getBoardSize", &Gomoku::getBoardSize)
+		.def("getGameType", &Gomoku::getGameType)
 		.def("getBoardValue", &Gomoku::getBoardValue)
 		.def("getCurrentPlayer", &Gomoku::getCurrentPlayer)
 		.def("getWhitePlayerPebblesTaken", &Gomoku::getWhitePlayerPebblesTaken)
