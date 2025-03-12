@@ -81,6 +81,7 @@ private:
     bool has10Pebbles() const;
     bool process10Pebbles();
     bool has5PebblesAligned(int placedRow, int placedCol) const;
+    bool hasMoreThan5PebblesAligned(int placedRow, int placedCol) const;
     bool is5PebblesAlignedBreakable(int placedRow, int placedCol);
 };
 

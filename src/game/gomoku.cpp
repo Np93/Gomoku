@@ -180,14 +180,26 @@ std::pair<bool, std::string> Gomoku::processMove(int placedRow, int placedCol)
         }
     }
     
-    if (gameType == "special" && isDoubleThree(placedRow, placedCol)) {
-        debugCall([&](){
-            std::cout << "Mouvement interdit (" 
-                      << placedRow << ", " << placedCol 
-                      << ") : Double-three détecté" << std::endl;
-        });
-        undoMove(placedRow, placedCol);
-        return std::make_pair(false, "double_three");
+    if (gameType == "special") {
+        if (isDoubleThree(placedRow, placedCol)) {
+            debugCall([&](){
+                std::cout << "Mouvement interdit (" 
+                        << placedRow << ", " << placedCol 
+                        << ") : Double-three détecté" << std::endl;
+            });
+            undoMove(placedRow, placedCol);
+            return std::make_pair(false, "double_three");
+        }
+
+        if (hasMoreThan5PebblesAligned(placedRow, placedCol)) {
+            debugCall([&](){
+                std::cout << "Mouvement interdit (" 
+                        << placedRow << ", " << placedCol 
+                        << ") : line over 5 détecté" << std::endl;
+            });
+            undoMove(placedRow, placedCol);
+            return std::make_pair(false, "line_over_5");
+        }
     }
 
     // Check if current player aligned at least 5
@@ -676,4 +688,45 @@ bool Gomoku::isBoardEmpty() const
     return !std::any_of(board.begin(), board.end(), [](const std::vector<int>& row) {
         return std::any_of(row.begin(), row.end(), [](int cell) { return cell != EMPTY; });
     });
+}
+
+/**
+ * for bonuses look if a line has more than 5 Pebbles to forbid the move
+ */
+bool Gomoku::hasMoreThan5PebblesAligned(int placedRow, int placedCol) const
+{
+    std::vector<std::pair<int,int>> directions = {
+        {0,1}, {1,0}, {1,1}, {1,-1}
+    };
+
+    for (auto &dir : directions)
+    {
+        int count = 1;
+        int dr = dir.first;
+        int dc = dir.second;
+
+        int rr = placedRow + dr;
+        int cc = placedCol + dc;
+        while (isWithinBounds(rr, cc) && board[rr][cc] == currentPlayer)
+        {
+            count++;
+            rr += dr;
+            cc += dc;
+        }
+
+        rr = placedRow - dr;
+        cc = placedCol - dc;
+        while (isWithinBounds(rr, cc) && board[rr][cc] == currentPlayer)
+        {
+            count++;
+            rr -= dr;
+            cc -= dc;
+        }
+
+        if (count > 5) { 
+            return true;
+        }
+    }
+    
+    return false;
 }
