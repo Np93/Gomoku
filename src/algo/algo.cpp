@@ -34,7 +34,7 @@ std::pair<int,int> GomokuAI::random_move()
     return moves[idx];
 }
 
-double GomokuAI::get_score_for_position()
+double GomokuAI::get_score_for_position(const std::string& gameType)
 {
     // "score = (number_of_threat_white - number_of_threat_black)/3 * 10"
     // plus difference in pebbles_taken * 10
@@ -48,9 +48,7 @@ double GomokuAI::get_score_for_position()
 
     double score = 0.0;
     score += (num_threat_white - num_threat_black) / 3.0 * 10.0;
-
-    // Ajouter les captures uniquement si le mode est "duo" ou "normal"
-    std::string gameType = m_gomoku.getGameType();
+    
     if (gameType == "duo" || gameType == "normal") {
         // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
         // But these are private.  If needed, you can add getters in Gomoku:
@@ -92,11 +90,12 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 
     // If first pass, use multi-threading
     if (is_first) {
+        std::string gameType = m_gomoku.getGameType();
         std::vector<std::future<std::pair<double, std::pair<int, int>>>> futures;
 
         for (auto& mv : possible_moves) {
-            futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing]() {
-                return evaluate_move(mv.first, mv.second, depth, is_maximizing);
+            futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing, gameType]() {
+                return evaluate_move(mv.first, mv.second, depth, is_maximizing, gameType);
             }));
         }
 
@@ -122,8 +121,9 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
             }
         }
     } else { // Normal sequential evaluation
+        std::string gameType = m_gomoku.getGameType();
         for (auto& mv : possible_moves) {
-            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing);
+            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing, gameType);
 
             if (is_maximizing) {
                 if (score > best_score) {
@@ -165,7 +165,7 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
     }
 }
 
-ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing)
+ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing, const std::string& gameType)
 {
     // We'll create a temporary clone of the Gomoku state to simulate
     Gomoku cloned_state = m_gomoku.clone();
@@ -188,7 +188,7 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
         // Evaluate the position heuristically
         // We create a temporary AI to compute the score from the cloned_state
         GomokuAI temp_ai(cloned_state);
-        double score = temp_ai.get_score_for_position();
+        double score = temp_ai.get_score_for_position(gameType);
         return std::make_pair(score, std::make_pair(row, col));
     } else {
         // Recurse
