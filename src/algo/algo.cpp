@@ -76,107 +76,69 @@ double GomokuAI::get_score_for_position()
 
 ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 {
-	static std::random_device rd;
-	static std::mt19937 g(rd());
-	
-	std::atomic<bool> time_up(false);
-	std::mutex results_mutex;
-
-	auto start_time = std::chrono::steady_clock::now();
-	auto time_limit = std::chrono::milliseconds(450); // 0.5 second limit
-
-	if (m_gomoku.isBoardEmpty()) {
-		return {0.0, random_move()};
-	}
-
-	std::vector<std::pair<int, int>> possible_moves =
-		!m_gomoku.getForcedMoves().empty() ? m_gomoku.getForcedMoves() : m_gomoku.getAllCloseMoves();
-
-	// Randomize move order
-	std::shuffle(possible_moves.begin(), possible_moves.end(), g);
-
-	if (possible_moves.empty()) {
-		std::cout << "No possible moves\n";
-		return {0.0, {-1, -1}};
-	}
-
-	std::vector<std::pair<int, int>> best_moves;
-	double best_score = is_maximizing ? minus_infinity() : plus_infinity();
-
-	if (is_first) {
-        std::vector<std::future<std::pair<double, std::pair<int, int>>>> futures;
-
-        for (auto& mv : possible_moves) {
+    static std::random_device rd;
+    static std::mt19937 rng(rd());
+    
+    if (m_gomoku.isBoardEmpty()) {
+        return {0.0, random_move()};
+    }
+    
+    // Use forced moves if available; otherwise, get all close moves.
+    auto forced_moves = m_gomoku.getForcedMoves();
+    std::vector<std::pair<int, int>> possible_moves = 
+        (!forced_moves.empty()) ? forced_moves : m_gomoku.getAllCloseMoves();
+    
+    if (possible_moves.empty()) {
+        std::cout << "No possible moves\n";
+        return {0.0, {-1, -1}};
+    }
+    
+    // Randomize move order
+    std::shuffle(possible_moves.begin(), possible_moves.end(), rng);
+    
+    std::vector<std::pair<int, int>> best_moves;
+    double best_score = is_maximizing ? minus_infinity() : plus_infinity();
+    
+    // Lambda to update the best move(s)
+    auto update_best = [&](double score, const std::pair<int, int>& move) {
+        if ((is_maximizing && score > best_score) || (!is_maximizing && score < best_score)) {
+            best_score = score;
+            best_moves.clear();
+            best_moves.push_back(move);
+        } else if (score == best_score) {
+            best_moves.push_back(move);
+        }
+    };
+    
+    if (is_first) {
+        std::vector<std::future<ScoredMove>> futures;
+        futures.reserve(possible_moves.size());
+        
+        for (const auto& mv : possible_moves) {
             futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing]() {
                 return evaluate_move(mv.first, mv.second, depth, is_maximizing);
             }));
         }
-
+        
         for (auto& fut : futures) {
             auto [score, move] = fut.get();
-
-            if (is_maximizing) {
-                if (score > best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            } else {
-                if (score < best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            }
+            update_best(score, move);
         }
-    } else { // Normal sequential evaluation
-        for (auto& mv : possible_moves) {
+    } else { // Sequential evaluation
+        for (const auto& mv : possible_moves) {
             auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing);
-
-            if (is_maximizing) {
-                if (score > best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            } else {
-                if (score < best_score) {
-                    best_score = score;
-                    best_moves.clear();
-                    best_moves.push_back(move);
-                } else if (score == best_score) {
-                    best_moves.push_back(move);
-                }
-            }
+            update_best(score, move);
         }
     }
-
+    
     if (!best_moves.empty()) {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
         std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
-
-        return std::make_pair(best_score, best_moves[distr(gen)]);
-    } else {
-        return std::make_pair(best_score, std::make_pair(-1, -1));
+        return {best_score, best_moves[distr(rng)]};
     }
-
-
-    // Pick randomly among the best moves
-    if (!best_moves.empty()) {
-        int idx = std::rand() % best_moves.size();
-        return std::make_pair(best_score, best_moves[idx]);
-    } else {
-        // Fallback if somehow no best_moves
-        return std::make_pair(best_score, std::make_pair(-1, -1));
-    }
+    
+    return {best_score, {-1, -1}};
 }
+
 
 
 ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing) {
