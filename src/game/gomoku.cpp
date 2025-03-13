@@ -276,6 +276,25 @@ void Gomoku::setWhitePlayerPebblesTaken(int pebbles)
 
 // PRIVATE METHODS
 
+std::string Gomoku::computeStateHash() const
+{
+	std::string hash;
+	hash.reserve(boardSize * boardSize + 2 * sizeof(int)); // Reserve space for efficiency
+
+	for (const auto& row : board)
+	{
+		for (int cell : row)
+		{
+			hash += std::to_string(cell);
+		}
+	}
+
+	hash += std::to_string(whitePlayerPebblesTaken);
+	hash += std::to_string(blackPlayerPebblesTaken);
+
+	return hash;
+}
+
 void Gomoku::changePlayer()
 {
     currentPlayer = -currentPlayer; // black = 1, white = -1
@@ -477,13 +496,22 @@ int Gomoku::getNumberOfThreats(int player)
     std::vector<std::pair<int, int>> pebbles = getAllPebblesOfPlayer(player);
     int threats = 0;
 
-    std::vector<std::vector<int>> patterns = {
+    static const std::vector<std::vector<int>> patterns = {
         {0, player, player, player, 0},
         {0, player, player, 0, player, 0},
         {0, player, 0, player, player, 0}
     };
 
-    std::vector<std::pair<int, int>> directions = {
+    static const std::vector<std::vector<int>> reversedPatterns = []() {
+        std::vector<std::vector<int>> revPatterns;
+        for (const auto &pattern : patterns) {
+            std::vector<int> revPattern(pattern.rbegin(), pattern.rend());
+            revPatterns.push_back(revPattern);
+        }
+        return revPatterns;
+    }();
+
+    static const std::vector<std::pair<int, int>> directions = {
         {0, 1}, {1, 0}, {1, 1}, {1, -1}
     };
 
@@ -493,15 +521,75 @@ int Gomoku::getNumberOfThreats(int player)
         {
             for (const auto &pattern : patterns)
             {
-                if (checkPattern(row, col, dr, dc, pattern) || checkPattern(row, col, -dr, -dc, pattern))
+                if (checkPattern(row, col, dr, dc, pattern) || checkPattern(row, col, dr, dc, reversedPatterns[&pattern - &patterns[0]]))
                 {
                     threats++;
-                    break;
+                    break; // Stop checking once a threat is found in this direction
                 }
             }
         }
     }
     return threats;
+}
+
+int Gomoku::getNumberOf4Aligned(int player) const
+{
+	int count = 0;
+	// Directions: horizontal, vertical, diagonals
+	std::vector<std::pair<int,int>> directions = {
+		{0,1}, {1,0}, {1,1}, {1,-1}
+	};
+
+	std::vector<std::pair<int, int>> pebbles = getAllPebblesOfPlayer(player);
+
+	for (auto &[r, c] : pebbles)
+	{
+		for (auto &dir : directions)
+		{
+			int dr = dir.first;
+			int dc = dir.second;
+
+			// Forward direction
+			int rr = r + dr;
+			int cc = c + dc;
+			int countPlayer = 1; // include the current pebble
+
+			bool is_blocked_backward = false;
+			bool is_blocked_forward = false;
+
+			while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+			{
+				countPlayer++;
+				rr += dr;
+				cc += dc;
+			}
+
+			// We are looking only for 4 pebble alignments without any opponent pebble at each end
+			if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
+				continue; // Move to the next direction
+
+			// Backward direction
+			rr = r - dr;
+			cc = c - dc;
+			while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+			{
+				countPlayer++;
+				rr -= dr;
+				cc -= dc;
+			}
+
+			// We are looking only for 4 pebble alignments without any opponent pebble at each end
+			if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
+				continue; // Move to the next direction
+
+			// Check if exactly 4 aligned and no opponent pebble at each end
+			if (countPlayer == 4)
+			{
+				count++;
+			}
+		}
+	}
+	return count;
 }
 
 bool Gomoku::checkPattern(int startRow, int startCol, int dr, int dc, const std::vector<int> &pattern)

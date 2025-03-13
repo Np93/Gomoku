@@ -41,6 +41,7 @@ public:
     
 	bool isDoubleThree(int row, int col);
 	int getNumberOfThreats(int player);
+	int getNumberOf4Aligned(int player) const;
     bool isBoardEmpty() const;
 
 	// GETTERS
@@ -57,6 +58,8 @@ public:
 	void setBlackPlayerPebblesTaken(int pebbles);
 	void setWhitePlayerPebblesTaken(int pebbles);
 
+	std::string computeStateHash() const;
+
 private:
     int boardSize;
     std::string gameType;
@@ -66,6 +69,7 @@ private:
     int blackPlayerPebblesTaken;
     std::vector<std::pair<int,int>> forcedMoves;
     bool gameOver;
+
 
     void changePlayer();
     void undoMove(int row, int col);
