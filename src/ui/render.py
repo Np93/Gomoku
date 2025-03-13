@@ -368,7 +368,7 @@ def render_game_ui():
         ai_process_time = time_ai_end - time_ai_start
         if best_move:
             row, col = best_move
-            is_valid, forbidden_message = gomoku.processMove(row, col)
+            is_valid, forbidden_message, score = gomoku.processMove(row, col)
             if not is_valid:
                 message_start_time = time.time()
                 return forbidden_message, message_start_time, False, is_valid, col, row
@@ -389,7 +389,7 @@ def render_game_ui():
 
             if 0 <= row < board_size and 0 <= col < board_size:
                 if gomoku.getBoardValue(row, col) == PlayerToken.EMPTY.value:
-                    is_valid, forbidden_message = gomoku.processMove(row, col)
+                    is_valid, forbidden_message, score = gomoku.processMove(row, col)
                     if not is_valid:
                         message_start_time = time.time()
                         return forbidden_message, message_start_time, False, is_valid, col, row

@@ -100,128 +100,114 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 		return {0.0, {-1, -1}};
 	}
 
-	double best_score = is_maximizing ? minus_infinity() : plus_infinity();
 	std::vector<std::pair<int, int>> best_moves;
-
-	auto evaluate_wrapper = [&](const std::pair<int, int>& mv) {
-		if (time_up.load()) return;
-
-		double score = evaluate_move(mv.first, mv.second, depth, is_maximizing).first;
-
-		std::lock_guard<std::mutex> lock(results_mutex);
-
-		if ((is_maximizing && score > best_score) || (!is_maximizing && score < best_score)) {
-			best_score = score;
-			best_moves = {mv};
-		} else if (score == best_score) {
-			best_moves.push_back(mv);
-		}
-	};
+	double best_score = is_maximizing ? minus_infinity() : plus_infinity();
 
 	if (is_first) {
-		unsigned int max_threads = std::thread::hardware_concurrency() * 4;
-		std::vector<std::thread> threads;
-		threads.reserve(max_threads);
+        std::vector<std::future<std::pair<double, std::pair<int, int>>>> futures;
 
-		for (const auto& mv : possible_moves) {
-			if (threads.size() >= max_threads) {
-				for (auto& thread : threads) {
-					if (thread.joinable()) thread.join();
-				}
-				threads.clear();
-			}
-			threads.emplace_back(evaluate_wrapper, mv);
-		}
+        for (auto& mv : possible_moves) {
+            futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing]() {
+                return evaluate_move(mv.first, mv.second, depth, is_maximizing);
+            }));
+        }
 
-		for (auto& thread : threads) {
-			if (std::chrono::steady_clock::now() - start_time > time_limit) {
-				time_up = true;
-				break;
-			}
-			if (thread.joinable()) thread.join();
-		}
+        for (auto& fut : futures) {
+            auto [score, move] = fut.get();
 
-		// Ensure all threads are joined
-		for (auto& thread : threads) {
-			if (thread.joinable()) thread.join();
-		}
+            if (is_maximizing) {
+                if (score > best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
+            } else {
+                if (score < best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
+            }
+        }
+    } else { // Normal sequential evaluation
+        for (auto& mv : possible_moves) {
+            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing);
 
-	} else {
-		// Non-first level recursive calls run synchronously (no threads)
-		for (auto& mv : possible_moves) {
-			if (std::chrono::steady_clock::now() - start_time > time_limit) {
-				time_up = true;
-				break;
-			}
+            if (is_maximizing) {
+                if (score > best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
+            } else {
+                if (score < best_score) {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push_back(move);
+                } else if (score == best_score) {
+                    best_moves.push_back(move);
+                }
+            }
+        }
+    }
 
-			evaluate_wrapper(mv);
-		}
-	}
+    if (!best_moves.empty()) {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
 
-	if (!best_moves.empty()) {
-		if (time_up) {
-			// if this is the main thread, set the time_up flag to true
-			if (is_first) std::cout << "Time up, returning best move so far\n";
-			return {best_score, best_moves[0]};
-		} else {
-			// Pick randomly from best moves if there's still time
-			static std::random_device rd;
-			static std::mt19937 gen(rd());
-			std::uniform_int_distribution<> distr(0, best_moves.size() - 1);
-			return {best_score, best_moves[distr(gen)]};
-		}
-	}
-	
-	// No best moves found
-	return {best_score, {-1, -1}};
+        return std::make_pair(best_score, best_moves[distr(gen)]);
+    } else {
+        return std::make_pair(best_score, std::make_pair(-1, -1));
+    }
+
+
+    // Pick randomly among the best moves
+    if (!best_moves.empty()) {
+        int idx = std::rand() % best_moves.size();
+        return std::make_pair(best_score, best_moves[idx]);
+    } else {
+        // Fallback if somehow no best_moves
+        return std::make_pair(best_score, std::make_pair(-1, -1));
+    }
 }
 
-ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing)
-{
-    // We'll create a temporary clone of the Gomoku state to simulate
+
+ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing) {
     Gomoku cloned_state = m_gomoku.clone();
-    // Attempt to place the move
-    auto [valid_move, reason] = cloned_state.processMove(row, col);
 
-    // If it's invalid, return +∞ or -∞ so the minmax can discard it
-	if (!valid_move) {
-		double bad_score = (is_maximizing ? -1000000.0 - depth: 1000000.0 + depth);
-		return std::make_pair(bad_score, std::make_pair(row, col));
-	}
+    auto [valid_move, reason, move_score] = cloned_state.processMove(row, col);
 
-	if (cloned_state.getGameStatus()) {
-		double terminal_score = (is_maximizing ? 1000000.0 + depth : -1000000.0 - depth);
-		return std::make_pair(terminal_score, std::make_pair(row, col));
-	}
-
-    // Not at terminal => either compute heuristic (if depth == 1) or do recursive minmax
-    if (depth <= 1) {
-        // Evaluate the position heuristically
-		std::string key = cloned_state.computeStateHash();
-
-		//  Check if the state is in the transposition table
-		{
-			std::shared_lock<std::shared_mutex> lock(transposition_mutex);
-			auto it = transposition_table.find
-				(key);
-			if (it != transposition_table.end()) {
-				return std::make_pair(it->second, std::make_pair(row, col));
-			}
-		}
-
-        double score = get_score_for_position();
-
-		// Add the state to the transposition table
-		{
-			std::unique_lock<std::shared_mutex> lock(transposition_mutex);
-			transposition_table[key] = score;
-		}
-
-        return std::make_pair(score, std::make_pair(row, col));
-    } else {
-        // Recurse
-        GomokuAI temp_ai(cloned_state);
-        auto [child_score, child_move] = temp_ai.minmax(depth - 1, !is_maximizing, false);
-        return std::make_pair(child_score, std::make_pair(row, col));
+    // Invalid move - immediately discard
+    if (!valid_move) {
+        double invalid_score = is_maximizing ? -1e6 - depth : 1e6 + depth;
+        return {invalid_score, {row, col}};
     }
+
+    // Terminal state detected
+    if (cloned_state.getGameStatus()) {
+        double terminal_score = is_maximizing ? 1e6 + depth : -1e6 - depth;
+        return {terminal_score, {row, col}};
+    }
+
+    // Adjust the heuristic score based on the current player
+    double adjusted_score = cloned_state.getScore();
+    adjusted_score += (cloned_state.getCurrentPlayer() == BLACK ? 1 : -1) * (move_score + depth);
+    cloned_state.setScore(adjusted_score);
+
+    // Terminal depth - return heuristic score
+    if (depth <= 1) {
+        return {adjusted_score, {row, col}};
+    }
+
+    // Recursive min-max call
+    GomokuAI temp_ai(cloned_state);
+    auto [child_score, _] = temp_ai.minmax(depth - 1, !is_maximizing, false);
+    return {child_score, {row, col}};
 }
