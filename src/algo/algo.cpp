@@ -16,6 +16,7 @@
 #include <iomanip>      // Include for std::setprecision
 #include <chrono>
 #include <atomic>
+#include <unordered_map> 
 
 std::unordered_map<std::string, double> transposition_table;
 std::shared_mutex transposition_mutex; // Use shared mutex
