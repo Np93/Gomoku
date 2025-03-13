@@ -35,7 +35,7 @@ public:
     std::pair<int,int> random_move();
 
     // Evaluate the board for the perspective of the current player (WHITE=+1, BLACK=-1).
-    double get_score_for_position();
+    double get_score_for_position(const std::string& gameType);
 
     // Minimax entry point
     // Returns (best_score, best_move)
@@ -50,7 +50,7 @@ private:
 
     // Evaluate a single move (similar to the python `evaluate_move` function).
     // Returns (score, (row,col)).
-    ScoredMove evaluate_move(int row, int col, int depth, bool is_maximizing);
+    ScoredMove evaluate_move(int row, int col, int depth, bool is_maximizing, const std::string& gameType);
 
     // Helper used in get_score_for_position() to mimic the python logic
     // This is a placeholder. You should fill it with logic that counts "threats" for the given player.

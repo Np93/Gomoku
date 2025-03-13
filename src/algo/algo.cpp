@@ -16,6 +16,7 @@
 #include <iomanip>      // Include for std::setprecision
 #include <chrono>
 #include <atomic>
+#include <unordered_map> 
 
 std::unordered_map<std::string, double> transposition_table;
 std::shared_mutex transposition_mutex; // Use shared mutex
@@ -41,7 +42,7 @@ std::pair<int,int> GomokuAI::random_move()
     return moves[idx];
 }
 
-double GomokuAI::get_score_for_position()
+double GomokuAI::get_score_for_position(const std::string& gameType)
 {
     // "score = (number_of_threat_white - number_of_threat_black)/3 * 10"
     // plus difference in pebbles_taken * 10
@@ -56,20 +57,28 @@ double GomokuAI::get_score_for_position()
 	int num_4_aligned_white = m_gomoku.getNumberOf4Aligned(WHITE);
 	int num_4_aligned_black = m_gomoku.getNumberOf4Aligned(BLACK);
 
-    // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
-    // But these are private.  If needed, you can add getters in Gomoku:
-    //    int getWhiteCaptures() const { return white_player_pebbles_taken; }
-    //    int getBlackCaptures() const { return black_player_pebbles_taken; }
-    // For now, let's assume we have those getters. If not, you can inline directly
-    // as needed (this requires modifying Gomoku to make them public or friend).
-    // We'll pretend we have:
-    int white_captures = m_gomoku.getWhitePlayerPebblesTaken(); // you must implement
-    int black_captures = m_gomoku.getBlackPlayerPebblesTaken(); // you must implement
-
     double score = 0.0;
     score += (num_threat_white - num_threat_black) / 3.0 * 8.0;
-    score += (white_captures - black_captures) * 10.0;
-	score += (num_4_aligned_white - num_4_aligned_black) / 4.0 * 15.0;
+    score += (num_4_aligned_white - num_4_aligned_black) / 4.0 * 15.0;
+
+    if (gameType == "duo" || gameType == "normal") {
+        // The Gomoku class tracks captures in: white_player_pebbles_taken, black_player_pebbles_taken
+        // But these are private.  If needed, you can add getters in Gomoku:
+        //    int getWhiteCaptures() const { return white_player_pebbles_taken; }
+        //    int getBlackCaptures() const { return black_player_pebbles_taken; }
+        // For now, let's assume we have those getters. If not, you can inline directly
+        // as needed (this requires modifying Gomoku to make them public or friend).
+        // We'll pretend we have:
+        int white_captures = m_gomoku.getWhitePlayerPebblesTaken(); // you must implement
+        int black_captures = m_gomoku.getBlackPlayerPebblesTaken(); // you must implement
+
+        score += (white_captures - black_captures) * 10.0;
+    }
+
+    // double score = 0.0;
+    // score += (num_threat_white - num_threat_black) / 3.0 * 8.0;
+    // score += (white_captures - black_captures) * 10.0;
+	// score += (num_4_aligned_white - num_4_aligned_black) / 4.0 * 15.0;
 
     return score;
 }
@@ -102,11 +111,12 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 
 	double best_score = is_maximizing ? minus_infinity() : plus_infinity();
 	std::vector<std::pair<int, int>> best_moves;
+    std::string gameType = m_gomoku.getGameType();
 
 	auto evaluate_wrapper = [&](const std::pair<int, int>& mv) {
 		if (time_up.load()) return;
 
-		double score = evaluate_move(mv.first, mv.second, depth, is_maximizing).first;
+		double score = evaluate_move(mv.first, mv.second, depth, is_maximizing, gameType).first;
 
 		std::lock_guard<std::mutex> lock(results_mutex);
 
@@ -176,7 +186,7 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 	return {best_score, {-1, -1}};
 }
 
-ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing)
+ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing, const std::string& gameType)
 {
     // We'll create a temporary clone of the Gomoku state to simulate
     Gomoku cloned_state = m_gomoku.clone();
@@ -209,7 +219,7 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
 			}
 		}
 
-        double score = get_score_for_position();
+        double score = get_score_for_position(gameType);
 
 		// Add the state to the transposition table
 		{

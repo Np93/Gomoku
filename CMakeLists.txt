@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(gomoku_python_binding)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Turn on position-independent code for all targets
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 

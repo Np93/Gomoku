@@ -174,7 +174,7 @@ def main_menu():
         # Draw buttons using the draw_button function
         draw_button(screen, normal_button, "Partie normale", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
-        draw_button(screen, special_button, "Partie spéciale", small_font, mouse_pos,
+        draw_button(screen, special_button, "Partie renju", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
         draw_button(screen, duo_button, "Duo", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
@@ -338,7 +338,10 @@ def reset_player_times(player_times: dict) -> None:
         player_times[player]["last_time"] = 0
 
 def initialize_game(game_mode: str) -> tuple:
-    gomoku = Gomoku()
+    global board_size, screen_size
+    board_size = 15 if game_mode == "special" else 19
+    gomoku = Gomoku(board_size, game_mode)
+    screen_size = board_size * cell_size
     ia_player = None
     running = True
     game_over = False
@@ -377,6 +380,7 @@ def render_game_ui():
 
     def handle_player_turn(event, gomoku, color, player_times, message_start_time):
         """Handle the player's turn."""
+        global board_size
         x, y = event.pos
         grid_start = border_size + cell_size // 2
         grid_end = border_size + screen_size - cell_size // 2
@@ -446,9 +450,9 @@ def render_game_ui():
                     ai_process_time = 0
                     action = end_game_menu(winner)
                     if action == "replay":
-                        gomoku = Gomoku()
+                        board_size = 15 if game_mode == "special" else 19
+                        gomoku = Gomoku(board_size, game_mode)
                         if game_mode in ["normal", "special"]:
-                            # ai.reset(gomoku)
                             ai = GomokuAI(gomoku=gomoku)
                         game_over = False
                         winner = None

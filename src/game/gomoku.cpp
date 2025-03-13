@@ -14,9 +14,8 @@ void debugCall(const std::function<void()>& func)
     }
 }
 
-Gomoku::Gomoku()
-{
-    boardSize = 19;
+Gomoku::Gomoku(int boardSize, const std::string& gameType)
+    : boardSize(boardSize), gameType(gameType) {
     board.resize(boardSize, std::vector<int>(boardSize, EMPTY));
     currentPlayer = BLACK;
     whitePlayerPebblesTaken = 0;
@@ -28,6 +27,7 @@ Gomoku Gomoku::clone() const
 {
     Gomoku newCopy;
     newCopy.boardSize = boardSize;
+    newCopy.gameType = gameType;
     newCopy.board = board;
     newCopy.currentPlayer = currentPlayer;
     newCopy.whitePlayerPebblesTaken = whitePlayerPebblesTaken;
@@ -157,24 +157,49 @@ std::pair<bool, std::string> Gomoku::processMove(int placedRow, int placedCol)
     // Place the stone on the board
     board[placedRow][placedCol] = currentPlayer;
 
-    // Process captures
-    bool captured = processCapture(placedRow, placedCol);
+    if (gameType == "duo" || gameType == "normal") {
+        // Process captures
+        bool captured = processCapture(placedRow, placedCol);
+    
 
-    // Check double-three: if it is a double-three, revert and return false
-    if (!captured && isDoubleThree(placedRow, placedCol))
-    {
-        debugCall([&](){
-            std::cout << "Mouvement interdit (" 
-                      << placedRow << ", " << placedCol 
-                      << ") : Double-three detecte" << std::endl;
-        });
-        undoMove(placedRow, placedCol);
-        return std::make_pair(false, "double_three");
+        // Check double-three: if it is a double-three, revert and return false
+        if (!captured && isDoubleThree(placedRow, placedCol))
+        {
+            debugCall([&](){
+                std::cout << "Mouvement interdit (" 
+                        << placedRow << ", " << placedCol 
+                        << ") : Double-three detecte" << std::endl;
+            });
+            undoMove(placedRow, placedCol);
+            return std::make_pair(false, "double_three");
+        }
+
+        // Check if current player has captured 10 pebbles -> immediate win
+        if (process10Pebbles()) {
+            return std::make_pair(true, "win_score");
+        }
     }
+    
+    if (gameType == "special") {
+        if (isDoubleThree(placedRow, placedCol)) {
+            debugCall([&](){
+                std::cout << "Mouvement interdit (" 
+                        << placedRow << ", " << placedCol 
+                        << ") : Double-three détecté" << std::endl;
+            });
+            undoMove(placedRow, placedCol);
+            return std::make_pair(false, "double_three");
+        }
 
-    // Check if current player has captured 10 pebbles -> immediate win
-    if (process10Pebbles()) {
-        return std::make_pair(true, "win_score");
+        if (hasMoreThan5PebblesAligned(placedRow, placedCol)) {
+            debugCall([&](){
+                std::cout << "Mouvement interdit (" 
+                        << placedRow << ", " << placedCol 
+                        << ") : line over 5 détecté" << std::endl;
+            });
+            undoMove(placedRow, placedCol);
+            return std::make_pair(false, "line_over_5");
+        }
     }
 
     // Check if current player aligned at least 5
@@ -192,6 +217,11 @@ std::pair<bool, std::string> Gomoku::processMove(int placedRow, int placedCol)
 int Gomoku::getBoardSize() const
 {
     return boardSize;
+}
+
+std::string Gomoku::getGameType() const
+{
+    return gameType;
 }
 
 int Gomoku::getBoardValue(int row, int col) const
@@ -723,7 +753,7 @@ bool Gomoku::process5Pebbles(int placedRow, int placedCol)
                       << " has aligned at least 5 pebbles\n";
         });
         // Check if opponent can break it
-        if (is5PebblesAlignedBreakable(placedRow, placedCol))
+        if ((gameType == "duo" || gameType == "normal") && is5PebblesAlignedBreakable(placedRow, placedCol))
         {
             debugCall([&](){
                 std::cout << "Opponent can break the line of 5 pebbles\n";
@@ -746,4 +776,45 @@ bool Gomoku::isBoardEmpty() const
     return !std::any_of(board.begin(), board.end(), [](const std::vector<int>& row) {
         return std::any_of(row.begin(), row.end(), [](int cell) { return cell != EMPTY; });
     });
+}
+
+/**
+ * for bonuses look if a line has more than 5 Pebbles to forbid the move
+ */
+bool Gomoku::hasMoreThan5PebblesAligned(int placedRow, int placedCol) const
+{
+    std::vector<std::pair<int,int>> directions = {
+        {0,1}, {1,0}, {1,1}, {1,-1}
+    };
+
+    for (auto &dir : directions)
+    {
+        int count = 1;
+        int dr = dir.first;
+        int dc = dir.second;
+
+        int rr = placedRow + dr;
+        int cc = placedCol + dc;
+        while (isWithinBounds(rr, cc) && board[rr][cc] == currentPlayer)
+        {
+            count++;
+            rr += dr;
+            cc += dc;
+        }
+
+        rr = placedRow - dr;
+        cc = placedCol - dc;
+        while (isWithinBounds(rr, cc) && board[rr][cc] == currentPlayer)
+        {
+            count++;
+            rr -= dr;
+            cc -= dc;
+        }
+
+        if (count > 5) { 
+            return true;
+        }
+    }
+    
+    return false;
 }
