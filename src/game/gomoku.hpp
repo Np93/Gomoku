@@ -24,7 +24,7 @@ constexpr int WHITE = 1;
 class Gomoku
 {
 public:
-    Gomoku();
+    explicit Gomoku(int boardSize = 19, const std::string& gameType = "normal");
     Gomoku clone() const;
 
 	void addTiles(const std::vector<std::pair<int,int>> &tiles, const int player);
@@ -52,6 +52,7 @@ public:
 	int getWhitePlayerPebblesTaken() const;
 	int getBlackPlayerPebblesTaken() const;
 	bool getGameStatus() const;
+    std::string getGameType() const;
 	std::vector<std::pair<int,int>> getForcedMoves() const;
 	double getScore() const { return score; }
 
@@ -65,6 +66,7 @@ public:
 
 private:
     int boardSize;
+    std::string gameType;
     std::vector<std::vector<int>> board;
     int currentPlayer;
     int whitePlayerPebblesTaken;
@@ -88,6 +90,7 @@ private:
     bool has10Pebbles() const;
     bool process10Pebbles();
     bool has5PebblesAligned(int placedRow, int placedCol) const;
+    bool hasMoreThan5PebblesAligned(int placedRow, int placedCol) const;
     bool is5PebblesAlignedBreakable(int placedRow, int placedCol);
 };
 

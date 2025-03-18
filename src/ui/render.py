@@ -55,6 +55,8 @@ player_times = {
     PlayerToken.BLACK.value: {"total_time": 0, "last_time": 0},
     PlayerToken.WHITE.value: {"total_time": 0, "last_time": 0}
 }
+ai_suggestion = None
+hint_used = False
 turn_start_time = None
 
 ai_process_time = 0
@@ -139,14 +141,27 @@ def draw_animated_stone(row, col, final_color, duration=0.3):
         pygame.display.flip()
         time.sleep(duration / steps)
 
-# def draw_background(): en test pour l'instant c'est de la merde de damier
-#     """Draw a patterned background for the game."""
-#     screen.fill(BORDER_COLOR)
-#     for x in range(0, total_screen_width, cell_size):
-#         for y in range(0, total_screen_height, cell_size):
-#             rect = pygame.Rect(x, y, cell_size, cell_size)
-#             color = (210, 180, 140) if (x // cell_size + y // cell_size) % 2 == 0 else (160, 82, 45)
-#             pygame.draw.rect(screen, color, rect)
+def draw_hint_button(screen, button_rect, font, mouse_pos):
+    """Draw the button to get an IA hint."""
+    text_color = WHITE
+    button_color = BUTTON_COLOR
+    hover_color = BUTTON_HOVER_COLOR
+
+    if button_rect.collidepoint(mouse_pos):
+        pygame.draw.rect(screen, hover_color, button_rect)
+    else:
+        pygame.draw.rect(screen, button_color, button_rect)
+
+    text_surface = font.render("IA Hint", True, text_color)
+    screen.blit(text_surface, (
+        button_rect.centerx - text_surface.get_width() // 2,
+        button_rect.centery - text_surface.get_height() // 2
+    ))
+
+def get_ai_suggestion(gomoku, ia):
+    """Recovers the best AI suggestion for the current player."""
+    _, best_move = ia.minmax(3, True, True)
+    return best_move if best_move else None
 
 def main_menu():
     """Display the main menu and handle user interaction."""
@@ -174,7 +189,7 @@ def main_menu():
         # Draw buttons using the draw_button function
         draw_button(screen, normal_button, "Partie normale", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
-        draw_button(screen, special_button, "Partie spéciale", small_font, mouse_pos,
+        draw_button(screen, special_button, "Partie renju", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
         draw_button(screen, duo_button, "Duo", small_font, mouse_pos,
                     BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
@@ -250,7 +265,7 @@ def end_game_menu(winner):
             pygame.quit()
             quit()
 
-def draw_board(gomoku, winner=None, forbidden_message=None):
+def draw_board(gomoku, game_mode, winner=None, forbidden_message=None):
     """Draw the Gomoku board and display game information."""
     # draw_background()
     screen.fill(BORDER_COLOR)
@@ -281,13 +296,15 @@ def draw_board(gomoku, winner=None, forbidden_message=None):
     current_player = gomoku.getCurrentPlayer()
     next_player = "Noir" if current_player == PlayerToken.BLACK.value else "Blanc"
     # next_player = "Noir" if gomoku.current_player == PlayerToken.BLACK.value else "Blanc"
-    black_score_text = font.render(f"Pions pris par Noir : {gomoku.getBlackPlayerPebblesTaken()}", True, TEXT_COLOR)
-    white_score_text = font.render(f"Pions pris par Blanc : {gomoku.getWhitePlayerPebblesTaken()}", True, TEXT_COLOR)
+    if game_mode != "special":
+        black_score_text = font.render(f"Pions pris par Noir : {gomoku.getBlackPlayerPebblesTaken()}", True, TEXT_COLOR)
+        white_score_text = font.render(f"Pions pris par Blanc : {gomoku.getWhitePlayerPebblesTaken()}", True, TEXT_COLOR)
     next_player_text = font.render(f"Prochain joueur : {next_player}", True, BLACK if current_player == PlayerToken.BLACK.value else WHITE)
 
     text_x = screen_size + 2 * border_size
-    screen.blit(black_score_text, (text_x, 50))
-    screen.blit(white_score_text, (text_x, 100))
+    if game_mode != "special":
+        screen.blit(black_score_text, (text_x, 50))
+        screen.blit(white_score_text, (text_x, 100))
     screen.blit(next_player_text, (text_x, 150))
 
     # Afficher les temps des joueurs
@@ -338,7 +355,10 @@ def reset_player_times(player_times: dict) -> None:
         player_times[player]["last_time"] = 0
 
 def initialize_game(game_mode: str) -> tuple:
-    gomoku = Gomoku()
+    global board_size, screen_size
+    board_size = 15 if game_mode == "special" else 19
+    gomoku = Gomoku(board_size, game_mode)
+    screen_size = board_size * cell_size
     ia_player = None
     running = True
     game_over = False
@@ -349,6 +369,30 @@ def initialize_game(game_mode: str) -> tuple:
     elif game_mode == "normal":
         ia_player = PlayerToken.WHITE.value
     return gomoku, ia_player, running, game_over, winner
+
+
+def draw_hint_feature(screen, game_mode):
+    """Displays IA index button and temporary suggested point in duo mode."""
+    global ai_suggestion
+
+    if game_mode == "duo":
+        hint_button_x = screen_size + 2 * border_size  
+        hint_button_y = total_screen_height - 100
+        hint_button_rect = pygame.Rect(hint_button_x, hint_button_y, 200, 50)
+        small_font = pygame.font.Font(None, 40)
+
+        draw_hint_button(screen, hint_button_rect, small_font, pygame.mouse.get_pos())
+
+        # Displays a temporary red dot if a suggestion has been made
+        if ai_suggestion:
+            pygame.draw.circle(
+                screen, WINNER_COLOR, 
+                (border_size + cell_size // 2 + ai_suggestion[1] * cell_size, 
+                 border_size + cell_size // 2 + ai_suggestion[0] * cell_size), 
+                int(pion_radius / 2)
+            )
+
+    return hint_button_rect if game_mode == "duo" else None
 
 def render_game_ui():
     """Main UI rendering loop for the game."""
@@ -377,6 +421,7 @@ def render_game_ui():
 
     def handle_player_turn(event, gomoku, color, player_times, message_start_time):
         """Handle the player's turn."""
+        global board_size, ai_suggestion, hint_used
         x, y = event.pos
         grid_start = border_size + cell_size // 2
         grid_end = border_size + screen_size - cell_size // 2
@@ -393,10 +438,12 @@ def render_game_ui():
                     if not is_valid:
                         message_start_time = time.time()
                         return forbidden_message, message_start_time, False, is_valid, col, row
+                    ai_suggestion = None
+                    hint_used = False   
         
         return None, message_start_time, gomoku.getGameStatus(), is_valid, col, row
 
-    global message_start_time, exit_game, turn_start_time, ai_process_time
+    global message_start_time, exit_game, turn_start_time, ai_process_time, ai_suggestion, hint_used
     forbidden_message = None
 
     while not exit_game:
@@ -406,7 +453,11 @@ def render_game_ui():
             gomoku, ia_player, running, game_over, winner = initialize_game(game_mode)
 
             while running:
-                draw_board(gomoku, winner, forbidden_message)
+                draw_board(gomoku, game_mode, winner, forbidden_message)
+                if game_mode == "duo":
+                    hint_button_rect = draw_hint_feature(screen, game_mode)
+                else:
+                    hint_button_rect = None
                 forbidden_message, message_start_time = reset_forbidden_message(forbidden_message, message_start_time, message_duration)
                 pygame.display.flip()
 
@@ -431,6 +482,10 @@ def render_game_ui():
                             running = False
                             exit_game = True
                         elif event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+                            if game_mode == "duo" and not hint_used and event.type == pygame.MOUSEBUTTONDOWN:
+                                if hint_button_rect.collidepoint(event.pos):
+                                    ai_suggestion = get_ai_suggestion(gomoku, GomokuAI(gomoku))
+                                    hint_used = True
                             forbidden_message, message_start_time, game_over, is_valid, col, row = handle_player_turn(
                                 event, gomoku, turn_start_time, player_times, message_start_time
                             )
@@ -446,9 +501,9 @@ def render_game_ui():
                     ai_process_time = 0
                     action = end_game_menu(winner)
                     if action == "replay":
-                        gomoku = Gomoku()
+                        board_size = 15 if game_mode == "special" else 19
+                        gomoku = Gomoku(board_size, game_mode)
                         if game_mode in ["normal", "special"]:
-                            # ai.reset(gomoku)
                             ai = GomokuAI(gomoku=gomoku)
                         game_over = False
                         winner = None
