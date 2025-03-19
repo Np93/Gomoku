@@ -182,8 +182,9 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
     }
     
     if (gameType == "special") {
-		capturedCount = processCapture(placedRow, placedCol);
-	
+		// capturedCount = processCapture(placedRow, placedCol);
+        capturedCount = 0;
+
         if (isDoubleThree(placedRow, placedCol)) {
             debugCall([&](){
                 std::cout << "Mouvement interdit (" 
@@ -212,10 +213,12 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
     int aligned4Score = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol) * 40;
     int moveScore     = captureScore + threatScore + aligned4Score;
 
-	// Check win conditions.
-	if (process10Pebbles())
-		return std::make_tuple(true, "win_score", 1000);
-	
+    if (gameType != "special") {
+	    // Check win conditions.
+        if (process10Pebbles())
+            return std::make_tuple(true, "win_score", 1000);
+    }
+
     if (process5Pebbles(placedRow, placedCol))
         return std::make_tuple(true, "win_alignments", 1000);
 
