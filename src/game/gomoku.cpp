@@ -157,17 +157,12 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
     // Commit the move on the board.
     board[placedRow][placedCol] = currentPlayer;
 
+    int capturedCount = 0; // Declare capturedCount at the beginning of the function
+
     if (gameType == "duo" || gameType == "normal") {
-		// Process captures and compute their contribution.
-		int capturedCount = processCapture(placedRow, placedCol);
-		int captureScore  = capturedCount * 10;
-
-		// Evaluate additional tactical factors.
-		int threatScore   = getNumberOfThreatsMove(currentPlayer, placedRow, placedCol) * 5;
-		int aligned4Score = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol) * 40;
-		int moveScore     = captureScore + threatScore + aligned4Score;
+        // Process captures
+        capturedCount = processCapture(placedRow, placedCol);
     
-
         // Check double-three: if it is a double-three, revert and return false
 		if (capturedCount == 0 && isDoubleThree(placedRow, placedCol))
 		{
@@ -177,26 +172,28 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
                         << ") : Double-three detecte" << std::endl;
             });
             undoMove(placedRow, placedCol);
-            return std::make_pair(false, "double_three");
+            return std::make_tuple(false, "double_three", 0);
         }
 
         // Check if current player has captured 10 pebbles -> immediate win
         if (process10Pebbles()) {
-            return std::make_pair(true, "win_score");
+            return std::make_tuple(true, "win_score", 1000);
         }
     }
     
     if (gameType == "special") {
-		if (isDoubleThree(placedRow, placedCol)) {
+		capturedCount = processCapture(placedRow, placedCol);
+	
+        if (isDoubleThree(placedRow, placedCol)) {
             debugCall([&](){
-				std::cout << "Mouvement interdit (" 
-				<< placedRow << ", " << placedCol 
-				<< ") : Double-three détecté" << std::endl;
+                std::cout << "Mouvement interdit (" 
+                        << placedRow << ", " << placedCol 
+                        << ") : Double-three détecté" << std::endl;
             });
             undoMove(placedRow, placedCol);
-            return std::make_pair(false, "double_three");
+            return std::make_tuple(false, "double_three", 0);
         }
-		
+
         if (hasMoreThan5PebblesAligned(placedRow, placedCol)) {
 			debugCall([&](){
 				std::cout << "Mouvement interdit (" 
@@ -204,14 +201,21 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
 				<< ") : line over 5 détecté" << std::endl;
             });
             undoMove(placedRow, placedCol);
-            return std::make_pair(false, "line_over_5");
+            return std::make_tuple(false, "line_over_5", 0);
         }
     }
-	
+
+    int captureScore  = capturedCount * 10;
+
+    // Evaluate additional tactical factors.
+    int threatScore   = getNumberOfThreatsMove(currentPlayer, placedRow, placedCol) * 5;
+    int aligned4Score = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol) * 40;
+    int moveScore     = captureScore + threatScore + aligned4Score;
+
 	// Check win conditions.
 	if (process10Pebbles())
 		return std::make_tuple(true, "win_score", 1000);
-
+	
     if (process5Pebbles(placedRow, placedCol))
         return std::make_tuple(true, "win_alignments", 1000);
 

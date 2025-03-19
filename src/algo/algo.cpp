@@ -125,7 +125,7 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
         
         for (const auto& mv : possible_moves) {
             futures.emplace_back(std::async(std::launch::async, [this, mv, depth, is_maximizing]() {
-                return evaluate_move(mv.first, mv.second, depth, is_maximizing);
+                return evaluate_move(mv.first, mv.second, depth, is_maximizing, m_gomoku.getGameType());
             }));
         }
         
@@ -135,7 +135,7 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
         }
     } else { // Sequential evaluation
         for (const auto& mv : possible_moves) {
-            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing);
+            auto [score, move] = evaluate_move(mv.first, mv.second, depth, is_maximizing, m_gomoku.getGameType());
             update_best(score, move);
         }
     }
@@ -150,7 +150,8 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
 
 
 
-ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing) {
+ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizing, const std::string& gameType)
+{
     Gomoku cloned_state = m_gomoku.clone();
 
     auto [valid_move, reason, move_score] = cloned_state.processMove(row, col);
