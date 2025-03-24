@@ -5,7 +5,7 @@
 #include <cstring>
 
 // Definition of the global debug flag
-bool DEBUG = true;
+bool DEBUG = false;
 
 void debugCall(const std::function<void()>& func)
 {
