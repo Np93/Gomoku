@@ -5,7 +5,7 @@
 #include <cstring>
 
 // Definition of the global debug flag
-bool DEBUG = false;
+bool DEBUG = true;
 
 void debugCall(const std::function<void()>& func)
 {
@@ -160,10 +160,13 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
     int capturedCount = 0; // Declare capturedCount at the beginning of the function
 
     if (gameType == "duo" || gameType == "normal") {
-        // auto possibleCaptures = getCapturePoints(currentPlayer);
-        // for (auto& pos : possibleCaptures) {
-        //     std::cout << "Capture possible en jouant sur : (" << pos.first << ", " << pos.second << ")\n";
-        // }
+        
+        debugCall([&](){
+            auto possibleCaptures = getCapturePoints(currentPlayer);
+            for (auto& pos : possibleCaptures) {
+                std::cout << "Capture possible by playing on : (" << pos.first << ", " << pos.second << ")\n";
+            }
+        });
 
         // Process captures
         capturedCount = processCapture(placedRow, placedCol);
@@ -781,51 +784,51 @@ bool Gomoku::has5PebblesAligned(int placedRow, int placedCol) const
     return false;
 }
 
-// std::vector<std::pair<int, int>> Gomoku::getCapturePoints(int player)
-// {
-// 	std::vector<std::pair<int, int>> captureMoves;
-// 	int opponent = -player;
+/**
+ * returns possible capture points for the player, used for debugging
+*/
+std::vector<std::pair<int, int>> Gomoku::getCapturePoints(int player)
+{
+	std::vector<std::pair<int, int>> captureMoves;
+	int opponent = -player;
 
-// 	static const std::vector<std::pair<int,int>> directions = {
-// 		{0,1}, {1,0}, {1,1}, {1,-1}
-// 	};
+	static const std::vector<std::pair<int,int>> directions = {
+		{0,1}, {1,0}, {1,1}, {1,-1}
+	};
 
-// 	for (int row = 0; row < boardSize; ++row)
-// 	{
-// 		for (int col = 0; col < boardSize; ++col)
-// 		{
-// 			// On ne teste que les cases VIDES
-// 			if (board[row][col] != EMPTY) continue;
+	for (int row = 0; row < boardSize; ++row)
+	{
+		for (int col = 0; col < boardSize; ++col)
+		{
+			if (board[row][col] != EMPTY) continue;
+			for (const auto& dir : directions)
+			{
+				int dRow = dir.first;
+				int dCol = dir.second;
 
-// 			// On simule le placement du joueur ici
-// 			for (const auto& dir : directions)
-// 			{
-// 				int dRow = dir.first;
-// 				int dCol = dir.second;
+				for (int sign : {1, -1})
+				{
+					int r1 = row + sign * dRow;
+					int c1 = col + sign * dCol;
+					int r2 = row + sign * dRow * 2;
+					int c2 = col + sign * dCol * 2;
+					int r3 = row + sign * dRow * 3;
+					int c3 = col + sign * dCol * 3;
 
-// 				for (int sign : {1, -1})
-// 				{
-// 					int r1 = row + sign * dRow;
-// 					int c1 = col + sign * dCol;
-// 					int r2 = row + sign * dRow * 2;
-// 					int c2 = col + sign * dCol * 2;
-// 					int r3 = row + sign * dRow * 3;
-// 					int c3 = col + sign * dCol * 3;
+					if (isWithinBounds(r3, c3) &&
+						board[r1][c1] == opponent &&
+						board[r2][c2] == opponent &&
+						board[r3][c3] == player)
+					{
+						captureMoves.emplace_back(row, col);
+					}
+				}
+			}
+		}
+	}
 
-// 					if (isWithinBounds(r3, c3) &&
-// 						board[r1][c1] == opponent &&
-// 						board[r2][c2] == opponent &&
-// 						board[r3][c3] == player)
-// 					{
-// 						captureMoves.emplace_back(row, col);
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-
-// 	return captureMoves;
-// }
+	return captureMoves;
+}
 
 /**
  * Check if there's at least one opponent's move that could break the line of 5.
@@ -844,17 +847,15 @@ bool Gomoku::is5PebblesAlignedBreakable(int placedRow, int placedCol)
     std::vector<std::pair<int,int>> directions8 = { {0,1}, {1,0}, {1,1}, {1,-1}, {0,-1}, {-1,0}, {-1,-1}, {-1,1} };
 
     std::set<std::pair<int, int>> alignedStones;
-	
-	// std::cout << "Collecting aligned stones from (" << placedRow << ", " << placedCol << ") for player " << originalPlayer << "\n";
+	debugCall([&](){
+	    std::cout << "Collecting aligned stones from (" << placedRow << ", " << placedCol << ") for player " << originalPlayer << "\n";
+    });
 
     for (auto &[dr, dc] : directions) {
-        alignedStones.insert({placedRow, placedCol});
-        // std::cout << "  Direction: (" << dr << ", " << dc << ")\n";
-
+        alignedStones.insert({placedRow, placedCol});    
         // Forward
         int r = placedRow + dr, c = placedCol + dc;
         while (isWithinBounds(r, c) && board[r][c] == originalPlayer) {
-            // std::cout << "    Aligned (forward): (" << r << ", " << c << ")\n";
             alignedStones.insert({r, c});
             r += dr;
             c += dc;
@@ -864,19 +865,21 @@ bool Gomoku::is5PebblesAlignedBreakable(int placedRow, int placedCol)
         r = placedRow - dr;
         c = placedCol - dc;
         while (isWithinBounds(r, c) && board[r][c] == originalPlayer) {
-            // std::cout << "    Aligned (backward): (" << r << ", " << c << ")\n";
             alignedStones.insert({r, c});
             r -= dr;
             c -= dc;
         }
     }
-    // std::cout << "\nAligned stones found around (" << placedRow << ", " << placedCol << ") for player " << originalPlayer << ":\n";
-    // for (const auto& [r, c] : alignedStones) {
-	//     std::cout << "  • (" << r << ", " << c << ")\n";
-    // }
 
-    // std::cout << "Total aligned stones: " << alignedStones.size() << "\n";
-    
+    debugCall([&](){
+        std::cout << "\nAligned stones found around (" << placedRow << ", " << placedCol << ") for player " << originalPlayer << ":\n";
+        for (const auto& [r, c] : alignedStones) {
+            std::cout << "  • (" << r << ", " << c << ")\n";
+        }
+
+        std::cout << "Total aligned stones: " << alignedStones.size() << "\n";
+    });
+
     for (auto &[r, c] : alignedStones) {
         for (auto &[dr, dc] : directions8) {
             int r2 = r + dr;
@@ -884,17 +887,12 @@ bool Gomoku::is5PebblesAlignedBreakable(int placedRow, int placedCol)
 
             if (!isWithinBounds(r2, c2)) continue;
 
-            //
             if (board[r][c] == originalPlayer && board[r2][c2] == originalPlayer) {
-
-                // Case avant le premier pion
                 int r0 = r - dr;
                 int c0 = c - dc;
                 if (isWithinBounds(r0, c0) && board[r0][c0] == EMPTY) {
                     candidateMoves.insert({r0, c0});
                 }
-
-                // Case après le deuxième pion
                 int r3 = r2 + dr;
                 int c3 = c2 + dc;
                 if (isWithinBounds(r3, c3) && board[r3][c3] == EMPTY) {
@@ -903,17 +901,20 @@ bool Gomoku::is5PebblesAlignedBreakable(int placedRow, int placedCol)
             }
         }
     }
-
-    // std::cout << "Final candidateMoves: ";
-    // for (const auto& move : candidateMoves) {
-    //     std::cout << "(" << move.first << ", " << move.second << ") ";
-    // }
-    // std::cout << "\n";
-	// std::cout << "Candidate moves: ";
-	// Simulate each candidate move in-place.
+    debugCall([&](){
+        std::cout << "Final candidateMoves: ";
+        for (const auto& move : candidateMoves) {
+            std::cout << "(" << move.first << ", " << move.second << ") ";
+        }
+        std::cout << "\n";
+        std::cout << "Candidate moves: ";
+    });
+    // Simulate each candidate move in-place.
 	for (auto &move : candidateMoves) {
-        // std::cout << "(" << move.first << ", " << move.second << ") ";
-		int r = move.first;
+        debugCall([&](){
+            std::cout << "(" << move.first << ", " << move.second << ")\n";
+        });
+        int r = move.first;
 		int c = move.second;
 		
 		// Save original state for reversion.
@@ -968,7 +969,6 @@ bool Gomoku::is5PebblesAlignedBreakable(int placedRow, int placedCol)
 			});
 		}
 	}
-    // std::cout << "\n";
 	
 	return !forcedMoves.empty();
 }

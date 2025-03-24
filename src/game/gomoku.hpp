@@ -92,6 +92,7 @@ private:
     bool has5PebblesAligned(int placedRow, int placedCol) const;
     bool hasMoreThan5PebblesAligned(int placedRow, int placedCol) const;
     bool is5PebblesAlignedBreakable(int placedRow, int placedCol);
+    std::vector<std::pair<int, int>> getCapturePoints(int player); // debug
 };
 
 #endif // GOMOKU_HPP
