@@ -412,10 +412,11 @@ def render_game_ui():
         ai_process_time = time_ai_end - time_ai_start
         if best_move:
             row, col = best_move
-            is_valid, forbidden_message = gomoku.processMove(row, col)
+            is_valid, forbidden_message, score = gomoku.processMove(row, col)
             if not is_valid:
                 message_start_time = time.time()
                 return forbidden_message, message_start_time, False, is_valid, col, row
+            print(f"movement play: ({row}, {col})")
 
         return None, message_start_time, gomoku.getGameStatus(), is_valid, col, row
 
@@ -434,10 +435,11 @@ def render_game_ui():
 
             if 0 <= row < board_size and 0 <= col < board_size:
                 if gomoku.getBoardValue(row, col) == PlayerToken.EMPTY.value:
-                    is_valid, forbidden_message = gomoku.processMove(row, col)
+                    is_valid, forbidden_message, score = gomoku.processMove(row, col)
                     if not is_valid:
                         message_start_time = time.time()
                         return forbidden_message, message_start_time, False, is_valid, col, row
+                    print(f"movement play: ({row}, {col})")
                     ai_suggestion = None
                     hint_used = False   
         
@@ -497,6 +499,16 @@ def render_game_ui():
                     game_over = True
                     winner = "Noir" if gomoku.getCurrentPlayer() == PlayerToken.BLACK.value else "Blanc"            
                 if game_over:
+                    # to see the last move played
+                    # print("Press SPACE to continue...")
+                    # waiting = True
+                    # while waiting:
+                    #     for event in pygame.event.get():
+                    #         if event.type == pygame.QUIT:
+                    #             pygame.quit()
+                    #             sys.exit()
+                    #         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    #             waiting = False
                     reset_player_times(player_times)
                     ai_process_time = 0
                     action = end_game_menu(winner)

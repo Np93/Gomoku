@@ -34,14 +34,16 @@ public:
     std::vector<std::pair<int,int>> getAllPossibleMoves() const;
     std::vector<std::pair<int,int>> getAllCloseMoves() const;
 
-    std::pair<bool, std::string> processMove(int placedRow, int placedCol);
+    std::tuple<bool, std::string, int> processMove(int placedRow, int placedCol);
     bool process5Pebbles(int placedRow, int placedCol);
     
 	int getBoardSize() const;
     
 	bool isDoubleThree(int row, int col);
 	int getNumberOfThreats(int player);
+	int getNumberOfThreatsMove(int player, int placedRow, int placedCol);
 	int getNumberOf4Aligned(int player) const;
+	int getNumberOf4AlignedMove(int player, int placedRow, int placedCol) const;
     bool isBoardEmpty() const;
 
 	// GETTERS
@@ -52,11 +54,13 @@ public:
 	bool getGameStatus() const;
     std::string getGameType() const;
 	std::vector<std::pair<int,int>> getForcedMoves() const;
+	double getScore() const { return score; }
 
 	// SETTERS
 	void setCurrentPlayer(int player);
 	void setBlackPlayerPebblesTaken(int pebbles);
 	void setWhitePlayerPebblesTaken(int pebbles);
+	void setScore(double score) { this->score = score; }
 
 	std::string computeStateHash() const;
 
@@ -70,6 +74,7 @@ private:
     std::vector<std::pair<int,int>> forcedMoves;
     bool gameOver;
 
+	double score;
 
     void changePlayer();
     void undoMove(int row, int col);
@@ -80,13 +85,14 @@ private:
     std::vector<std::pair<int,int>> getAllPebblesOfPlayer(int player) const;
 
     bool processForcedMove(int placedRow, int placedCol);
-    bool processCapture(int placedRow, int placedCol);
+    int processCapture(int placedRow, int placedCol);
 
     bool has10Pebbles() const;
     bool process10Pebbles();
     bool has5PebblesAligned(int placedRow, int placedCol) const;
     bool hasMoreThan5PebblesAligned(int placedRow, int placedCol) const;
     bool is5PebblesAlignedBreakable(int placedRow, int placedCol);
+    std::vector<std::pair<int, int>> getCapturePoints(int player); // debug
 };
 
 #endif // GOMOKU_HPP

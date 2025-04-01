@@ -34,6 +34,7 @@ Gomoku Gomoku::clone() const
     newCopy.blackPlayerPebblesTaken = blackPlayerPebblesTaken;
     newCopy.forcedMoves = forcedMoves;  // copy
     newCopy.gameOver = gameOver;
+	newCopy.score = score;
     return newCopy;
 }
 
@@ -143,44 +144,55 @@ std::vector<std::pair<int,int>> Gomoku::getAllCloseMoves() const
     return possibleMoves;
 }
 
-std::pair<bool, std::string> Gomoku::processMove(int placedRow, int placedCol)
+std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placedCol)
 {
-    if (gameOver) {
-        return std::make_pair(false, "game_over");
-    }
+    // Early exit if the game is already over.
+    if (gameOver)
+        return std::make_tuple(false, "game_over", 0);
 
-    // If the player must make a forced move but didn't:
-    if (processForcedMove(placedRow, placedCol)) {
-        return std::make_pair(false, "forced_move");
-    }
+    // Enforce forced moves: if forcedMoves is nonempty and the chosen move is not forced, reject it.
+    if (processForcedMove(placedRow, placedCol))
+        return std::make_tuple(false, "forced_move", 0);
 
-    // Place the stone on the board
+    // Commit the move on the board.
     board[placedRow][placedCol] = currentPlayer;
 
-    if (gameType == "duo" || gameType == "normal") {
-        // Process captures
-        bool captured = processCapture(placedRow, placedCol);
-    
+    int capturedCount = 0; // Declare capturedCount at the beginning of the function
 
+    if (gameType == "duo" || gameType == "normal") {
+        
+        debugCall([&](){
+            auto possibleCaptures = getCapturePoints(currentPlayer);
+            for (auto& pos : possibleCaptures) {
+                std::cout << "Capture possible by playing on : (" << pos.first << ", " << pos.second << ")\n";
+            }
+        });
+
+        // Process captures
+        capturedCount = processCapture(placedRow, placedCol);
+    
         // Check double-three: if it is a double-three, revert and return false
-        if (!captured && isDoubleThree(placedRow, placedCol))
-        {
+		if (capturedCount == 0 && isDoubleThree(placedRow, placedCol))
+		{
             debugCall([&](){
                 std::cout << "Mouvement interdit (" 
                         << placedRow << ", " << placedCol 
                         << ") : Double-three detecte" << std::endl;
             });
             undoMove(placedRow, placedCol);
-            return std::make_pair(false, "double_three");
+            return std::make_tuple(false, "double_three", 0);
         }
 
         // Check if current player has captured 10 pebbles -> immediate win
         if (process10Pebbles()) {
-            return std::make_pair(true, "win_score");
+            return std::make_tuple(true, "win_score", 1000);
         }
     }
     
     if (gameType == "special") {
+		// capturedCount = processCapture(placedRow, placedCol);
+        capturedCount = 0;
+
         if (isDoubleThree(placedRow, placedCol)) {
             debugCall([&](){
                 std::cout << "Mouvement interdit (" 
@@ -188,29 +200,40 @@ std::pair<bool, std::string> Gomoku::processMove(int placedRow, int placedCol)
                         << ") : Double-three détecté" << std::endl;
             });
             undoMove(placedRow, placedCol);
-            return std::make_pair(false, "double_three");
+            return std::make_tuple(false, "double_three", 0);
         }
 
         if (hasMoreThan5PebblesAligned(placedRow, placedCol)) {
-            debugCall([&](){
-                std::cout << "Mouvement interdit (" 
-                        << placedRow << ", " << placedCol 
-                        << ") : line over 5 détecté" << std::endl;
+			debugCall([&](){
+				std::cout << "Mouvement interdit (" 
+				<< placedRow << ", " << placedCol 
+				<< ") : line over 5 détecté" << std::endl;
             });
             undoMove(placedRow, placedCol);
-            return std::make_pair(false, "line_over_5");
+            return std::make_tuple(false, "line_over_5", 0);
         }
     }
 
-    // Check if current player aligned at least 5
-    if (process5Pebbles(placedRow, placedCol)) {
-        return std::make_pair(true, "win_alignments");
+    int captureScore  = capturedCount * 10;
+
+    // Evaluate additional tactical factors.
+    int threatScore   = getNumberOfThreatsMove(currentPlayer, placedRow, placedCol) * 5;
+    int aligned4Score = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol) * 40;
+    int moveScore     = captureScore + threatScore + aligned4Score;
+
+    if (gameType != "special") {
+	    // Check win conditions.
+        if (process10Pebbles())
+            return std::make_tuple(true, "win_score", 1000);
     }
 
-    // Change turn
+    if (process5Pebbles(placedRow, placedCol))
+        return std::make_tuple(true, "win_alignments", 1000);
+
+    // Change turn only if the game is not over.
     changePlayer();
 
-    return std::make_pair(true, "valid_move");
+    return std::make_tuple(true, "valid_move", moveScore);
 }
 
 // GETTERS
@@ -357,78 +380,57 @@ bool Gomoku::processForcedMove(int placedRow, int placedCol)
 }
 
 /**
- * Check if placing a stone at (placedRow, placedCol) captures opponent stones.
- * A capture pattern is: CurrentPlayer - Opponent(s) - CurrentPlayer
- * where the Opponent(s) can be 2 or 3 in a row.
- */
-bool Gomoku::processCapture(int placedRow, int placedCol)
+* Check if placing a stone at (placedRow, placedCol) captures opponent stones.
+* A capture pattern is: CurrentPlayer - Opponent(s) - CurrentPlayer
+* where the Opponent(s) can be 2 or 3 in a row.
+*/
+int Gomoku::processCapture(int placedRow, int placedCol)
 {
-    // Directions: horizontal, vertical, diagonals
-    std::vector<std::pair<int,int>> directions = {
-        {0,1}, {1,0}, {1,1}, {1,-1}
-    };
-    bool captureOccurred = false;
-    int opponentToken = -currentPlayer;
+	// Fixed directions: horizontal, vertical, and the two diagonals.
+	static const std::vector<std::pair<int,int>> directions = {
+		{0,1}, {1,0}, {1,1}, {1,-1}
+	};
 
-    for (auto &dir : directions)
-    {
-        int dRow = dir.first;
-        int dCol = dir.second;
+	int totalCaptured = 0;
+	int opponentToken = -currentPlayer;
 
-        // Check in both forward/backward directions
-        for (int directionSign : {1, -1})
-        {
-            // We only check for patterns of 2 or 3 consecutive opponent stones
-            for (int numOpponentStones = 2; numOpponentStones == 2; numOpponentStones++)
-            {
-                std::vector<std::pair<int,int>> capturedStonesPositions;
+	// Loop over each direction.
+	for (const auto &dir : directions)
+	{
+		int dRow = dir.first;
+		int dCol = dir.second;
+		
+		// Check both forward (sign = 1) and backward (sign = -1) directions.
+		for (int sign : {1, -1})
+		{
+			// Compute positions for the two opponent stones and the cell after them.
+			int r1 = placedRow + sign * dRow;
+			int c1 = placedCol + sign * dCol;
+			int r2 = placedRow + sign * dRow * 2;
+			int c2 = placedCol + sign * dCol * 2;
+			int r3 = placedRow + sign * dRow * 3;
+			int c3 = placedCol + sign * dCol * 3;
 
-                // Collect consecutive opponent stones
-                for (int offset = 1; offset <= numOpponentStones; offset++)
-                {
-                    int checkR = placedRow + directionSign * dRow * offset;
-                    int checkC = placedCol + directionSign * dCol * offset;
-                    if (isWithinBounds(checkR, checkC))
-                    {
-                        if (board[checkR][checkC] == opponentToken) {
-                            capturedStonesPositions.push_back({checkR, checkC});
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-
-                // If we found exactly numOpponentStones, check next cell is currentPlayer
-                if ((int)capturedStonesPositions.size() == numOpponentStones)
-                {
-                    int nextR = placedRow + directionSign * dRow * (numOpponentStones + 1);
-                    int nextC = placedCol + directionSign * dCol * (numOpponentStones + 1);
-
-                    if (isWithinBounds(nextR, nextC) &&
-                        board[nextR][nextC] == currentPlayer)
-                    {
-                        // We have a capture pattern
-                        captureOccurred = true;
-                        // Remove captured stones
-                        for (auto &pos : capturedStonesPositions) {
-                            board[pos.first][pos.second] = EMPTY;
-                        }
-                        // Update player's capture count
-                        if (currentPlayer == BLACK) {
-                            blackPlayerPebblesTaken += (int)capturedStonesPositions.size();
-                        } else {
-                            whitePlayerPebblesTaken += (int)capturedStonesPositions.size();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return captureOccurred;
+			// Check that positions are within bounds and match the capture pattern:
+			// Two opponent stones followed by a stone of the current player.
+			if (isWithinBounds(r2, c2) && isWithinBounds(r3, c3) &&
+				board[r1][c1] == opponentToken && board[r2][c2] == opponentToken &&
+				board[r3][c3] == currentPlayer)
+			{
+				// Remove the two captured opponent stones.
+				board[r1][c1] = EMPTY;
+				board[r2][c2] = EMPTY;
+				totalCaptured += 2;
+				if (currentPlayer == BLACK)
+					blackPlayerPebblesTaken += 2;
+				else
+					whitePlayerPebblesTaken += 2;
+			}
+		}
+	}
+	return totalCaptured;
 }
+ 
 
 /**
  * Check if the move at (row, col) creates a double-three configuration.
@@ -489,6 +491,95 @@ bool Gomoku::isDoubleThree(int row, int col)
     }
 
     return false;
+}
+
+// Modified to check only the current move's surroundings
+int Gomoku::getNumberOfThreatsMove(int player, int placedRow, int placedCol)
+{
+    int threats = 0;
+
+    static const std::vector<std::vector<int>> patterns = {
+        {0, player, player, player, 0},
+        {0, player, player, 0, player, 0},
+        {0, player, 0, player, player, 0}
+    };
+
+    static const std::vector<std::vector<int>> reversedPatterns = []() {
+        std::vector<std::vector<int>> revPatterns;
+        for (const auto &pattern : patterns) {
+            std::vector<int> revPattern(pattern.rbegin(), pattern.rend());
+            revPatterns.push_back(revPattern);
+        }
+        return revPatterns;
+    }();
+
+    static const std::vector<std::pair<int, int>> directions = {
+        {0, 1}, {1, 0}, {1, 1}, {1, -1}
+    };
+
+    for (const auto &[dr, dc] : directions)
+    {
+        for (size_t i = 0; i < patterns.size(); i++)
+        {
+            // Check both the pattern and its reverse from the placed stone position.
+            if (checkPattern(placedRow, placedCol, dr, dc, patterns[i]) ||
+                checkPattern(placedRow, placedCol, dr, dc, reversedPatterns[i]))
+            {
+                threats++;
+                break; // Count only one threat per direction
+            }
+        }
+    }
+    return threats;
+}
+
+// Modified to check only the current move's surroundings
+int Gomoku::getNumberOf4AlignedMove(int player, int placedRow, int placedCol) const
+{
+    int count = 0;
+    std::vector<std::pair<int,int>> directions = {
+        {0,1}, {1,0}, {1,1}, {1,-1}
+    };
+
+    for (auto &dir : directions)
+    {
+        int dr = dir.first;
+        int dc = dir.second;
+        int countPlayer = 1; // include the current stone
+
+        // Check forward direction
+        int rr = placedRow + dr;
+        int cc = placedCol + dc;
+        while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+        {
+            countPlayer++;
+            rr += dr;
+            cc += dc;
+        }
+
+        // Ensure the forward end is open
+        if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
+            continue;
+
+        // Check backward direction
+        rr = placedRow - dr;
+        cc = placedCol - dc;
+        while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+        {
+            countPlayer++;
+            rr -= dr;
+            cc -= dc;
+        }
+
+        // Ensure the backward end is open
+        if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
+            continue;
+
+        // Count only exactly 4 aligned stones
+        if (countPlayer == 4)
+            count++;
+    }
+    return count;
 }
 
 int Gomoku::getNumberOfThreats(int player)
@@ -694,51 +785,194 @@ bool Gomoku::has5PebblesAligned(int placedRow, int placedCol) const
 }
 
 /**
+ * returns possible capture points for the player, used for debugging
+*/
+std::vector<std::pair<int, int>> Gomoku::getCapturePoints(int player)
+{
+	std::vector<std::pair<int, int>> captureMoves;
+	int opponent = -player;
+
+	static const std::vector<std::pair<int,int>> directions = {
+		{0,1}, {1,0}, {1,1}, {1,-1}
+	};
+
+	for (int row = 0; row < boardSize; ++row)
+	{
+		for (int col = 0; col < boardSize; ++col)
+		{
+			if (board[row][col] != EMPTY) continue;
+			for (const auto& dir : directions)
+			{
+				int dRow = dir.first;
+				int dCol = dir.second;
+
+				for (int sign : {1, -1})
+				{
+					int r1 = row + sign * dRow;
+					int c1 = col + sign * dCol;
+					int r2 = row + sign * dRow * 2;
+					int c2 = col + sign * dCol * 2;
+					int r3 = row + sign * dRow * 3;
+					int c3 = col + sign * dCol * 3;
+
+					if (isWithinBounds(r3, c3) &&
+						board[r1][c1] == opponent &&
+						board[r2][c2] == opponent &&
+						board[r3][c3] == player)
+					{
+						captureMoves.emplace_back(row, col);
+					}
+				}
+			}
+		}
+	}
+
+	return captureMoves;
+}
+
+/**
  * Check if there's at least one opponent's move that could break the line of 5.
  * If so, we add these moves to forcedMoves.
  */
+#include <set> // Add this include at the top of your file
+
 bool Gomoku::is5PebblesAlignedBreakable(int placedRow, int placedCol)
 {
-    // Temporarily switch to opponent
-    int originalPlayer = currentPlayer;
-    int opponent = -originalPlayer;
+	int originalPlayer = currentPlayer;
+	int opponent = -originalPlayer;
 
-    // Get all possible moves for the opponent
-    currentPlayer = opponent;
-    std::vector<std::pair<int,int>> moves = getAllPossibleMoves();
-    // Switch back
-    currentPlayer = originalPlayer;
+	// Use a set to avoid duplicate candidate moves.
+	std::set<std::pair<int,int>> candidateMoves;
+	std::vector<std::pair<int,int>> directions = { {0,1}, {1,0}, {1,1}, {1,-1} };
+    std::vector<std::pair<int,int>> directions8 = { {0,1}, {1,0}, {1,1}, {1,-1}, {0,-1}, {-1,0}, {-1,-1}, {-1,1} };
 
-    // Test each possible move by the opponent
-    for (auto &m : moves)
-    {
-        int r = m.first;
-        int c = m.second;
+    std::set<std::pair<int, int>> alignedStones;
+	debugCall([&](){
+	    std::cout << "Collecting aligned stones from (" << placedRow << ", " << placedCol << ") for player " << originalPlayer << "\n";
+    });
 
-        // Make a temporary copy of the board
-        Gomoku gCopy = clone();
-        gCopy.currentPlayer = opponent;
+    for (auto &[dr, dc] : directions) {
+        alignedStones.insert({placedRow, placedCol});    
+        // Forward
+        int r = placedRow + dr, c = placedCol + dc;
+        while (isWithinBounds(r, c) && board[r][c] == originalPlayer) {
+            alignedStones.insert({r, c});
+            r += dr;
+            c += dc;
+        }
 
-        // Place the opponent's stone
-        gCopy.board[r][c] = gCopy.currentPlayer;
-        // Process possible captures from that move
-        gCopy.processCapture(r, c);
-
-        // Switch back to original player in the copy
-        gCopy.currentPlayer = originalPlayer;
-
-        // If after that move, there's no 5 in a row for original player,
-        // it means the opponent broke the line -> forced move
-        if (!gCopy.has5PebblesAligned(placedRow, placedCol))
-        {
-            forcedMoves.push_back(std::make_pair(r, c));
-            debugCall([&](){
-                std::cout << "Move to break line: (" << r << "," << c << ")\n";
-            });
+        // Backward
+        r = placedRow - dr;
+        c = placedCol - dc;
+        while (isWithinBounds(r, c) && board[r][c] == originalPlayer) {
+            alignedStones.insert({r, c});
+            r -= dr;
+            c -= dc;
         }
     }
-    return (!forcedMoves.empty());
+
+    debugCall([&](){
+        std::cout << "\nAligned stones found around (" << placedRow << ", " << placedCol << ") for player " << originalPlayer << ":\n";
+        for (const auto& [r, c] : alignedStones) {
+            std::cout << "  • (" << r << ", " << c << ")\n";
+        }
+
+        std::cout << "Total aligned stones: " << alignedStones.size() << "\n";
+    });
+
+    for (auto &[r, c] : alignedStones) {
+        for (auto &[dr, dc] : directions8) {
+            int r2 = r + dr;
+            int c2 = c + dc;
+
+            if (!isWithinBounds(r2, c2)) continue;
+
+            if (board[r][c] == originalPlayer && board[r2][c2] == originalPlayer) {
+                int r0 = r - dr;
+                int c0 = c - dc;
+                if (isWithinBounds(r0, c0) && board[r0][c0] == EMPTY) {
+                    candidateMoves.insert({r0, c0});
+                }
+                int r3 = r2 + dr;
+                int c3 = c2 + dc;
+                if (isWithinBounds(r3, c3) && board[r3][c3] == EMPTY) {
+                    candidateMoves.insert({r3, c3});
+                }
+            }
+        }
+    }
+    debugCall([&](){
+        std::cout << "Final candidateMoves: ";
+        for (const auto& move : candidateMoves) {
+            std::cout << "(" << move.first << ", " << move.second << ") ";
+        }
+        std::cout << "\n";
+        std::cout << "Candidate moves: ";
+    });
+    // Simulate each candidate move in-place.
+	for (auto &move : candidateMoves) {
+        debugCall([&](){
+            std::cout << "(" << move.first << ", " << move.second << ")\n";
+        });
+        int r = move.first;
+		int c = move.second;
+		
+		// Save original state for reversion.
+		int originalCell = board[r][c];  // Should be EMPTY.
+		board[r][c] = opponent;  // Simulate opponent move.
+
+		// Capture simulation: record any stones removed.
+		std::vector<std::pair<int,int>> capturedPositions;
+		{
+			std::vector<std::pair<int,int>> simDirs = { {0,1}, {1,0}, {1,1}, {1,-1} };
+			for (auto &d : simDirs) {
+				int dRow = d.first, dCol = d.second;
+				for (int sign : {1, -1}) {
+					std::vector<std::pair<int,int>> tempCaptured;
+					// Check for exactly two stones from originalPlayer.
+					for (int offset = 1; offset <= 2; offset++) {
+						int checkR = r + sign * dRow * offset;
+						int checkC = c + sign * dCol * offset;
+						if (isWithinBounds(checkR, checkC) && board[checkR][checkC] == originalPlayer)
+							tempCaptured.push_back(std::make_pair(checkR, checkC));
+						else
+							break;
+					}
+					if (tempCaptured.size() == 2) {
+						int nextR = r + sign * dRow * 3;
+						int nextC = c + sign * dCol * 3;
+						if (isWithinBounds(nextR, nextC) && board[nextR][nextC] == opponent) {
+							for (auto &pos : tempCaptured) {
+								board[pos.first][pos.second] = EMPTY;
+								capturedPositions.push_back(pos);
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		// Check if the 5-alignment (for originalPlayer) at (placedRow, placedCol) is now broken.
+		bool alignmentBroken = !has5PebblesAligned(placedRow, placedCol);
+		
+		// Revert the simulation.
+		board[r][c] = originalCell;
+		for (auto &pos : capturedPositions) {
+			board[pos.first][pos.second] = originalPlayer;
+		}
+		
+		// If the move breaks the alignment, add it to forcedMoves.
+		if (alignmentBroken) {
+			forcedMoves.push_back(std::make_pair(r, c));
+			debugCall([&](){
+				std::cout << "Move to break line: (" << r << ", " << c << ")\n";
+			});
+		}
+	}
+	
+	return !forcedMoves.empty();
 }
+
 
 /**
  * Process an alignment of 5 stones: check if it is breakable by the opponent.
