@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-cmake_policy(SET CMP0148 NEW)
+#cmake_policy(SET CMP0148 NEW)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(gomoku_python_binding)
 
@@ -62,6 +66,7 @@ target_link_libraries(gomoku_pybind_module
 
 # Set properties for the pybind11 module
 set_target_properties(gomoku_pybind_module PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
     PREFIX ""
     SUFFIX ".so"
     OUTPUT_NAME "cpp_gomoku"
