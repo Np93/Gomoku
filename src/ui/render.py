@@ -119,6 +119,23 @@ def draw_quit_button(screen, quit_center, radius, font, mouse_pos, text_color, b
     screen.blit(quit_text, (quit_center[0] - quit_text.get_width() // 2,
                             quit_center[1] - quit_text.get_height() // 2))
 
+def draw_surrender_button(screen, button_rect, font, mouse_pos):
+    """Draw the 'Surrender' button."""
+    text_color = WHITE
+    button_color = (178, 34, 34)  # Dark red
+    hover_color = (220, 20, 60)   # Bright red on hover
+
+    if button_rect.collidepoint(mouse_pos):
+        pygame.draw.rect(screen, hover_color, button_rect)
+    else:
+        pygame.draw.rect(screen, button_color, button_rect)
+
+    text_surface = font.render("Surrender", True, text_color)
+    screen.blit(text_surface, (
+        button_rect.centerx - text_surface.get_width() // 2,
+        button_rect.centery - text_surface.get_height() // 2
+    ))
+
 def handle_quit_button(mouse_pos, quit_center, radius):
     """Check if the 'Quitter' button is clicked and quit the game if it is."""
     if (mouse_pos[0] - quit_center[0]) ** 2 + (mouse_pos[1] - quit_center[1]) ** 2 <= radius ** 2:
@@ -339,6 +356,14 @@ def draw_board(gomoku, game_mode, winner=None, forbidden_message=None):
         text_rect = winner_text.get_rect(center=(border_size + screen_size // 2, border_size + screen_size // 2))
         screen.blit(winner_text, text_rect)
 
+    surrender_button_x = screen_size + 2 * border_size
+    surrender_button_y = total_screen_height - 160
+    surrender_button_rect = pygame.Rect(surrender_button_x, surrender_button_y, 200, 50)
+    surrender_font = pygame.font.Font(None, 36)
+    draw_surrender_button(screen, surrender_button_rect, surrender_font, pygame.mouse.get_pos())
+
+    return surrender_button_rect
+
 def update_opponent_time(player_times: dict, current_player: int, turn_start_time: float) -> float:
     if turn_start_time:
         # the player and modify before in process_move so we want the player from before
@@ -455,7 +480,7 @@ def render_game_ui():
             gomoku, ia_player, running, game_over, winner = initialize_game(game_mode)
 
             while running:
-                draw_board(gomoku, game_mode, winner, forbidden_message)
+                surrender_button_rect = draw_board(gomoku, game_mode, winner, forbidden_message)
                 if game_mode == "duo":
                     hint_button_rect = draw_hint_feature(screen, game_mode)
                 else:
@@ -488,6 +513,10 @@ def render_game_ui():
                                 if hint_button_rect.collidepoint(event.pos):
                                     ai_suggestion = get_ai_suggestion(gomoku, GomokuAI(gomoku))
                                     hint_used = True
+                            if surrender_button_rect.collidepoint(event.pos):
+                                game_over = True
+                                winner = "Noir" if gomoku.getCurrentPlayer() == PlayerToken.WHITE.value else "Blanc"
+                                break
                             forbidden_message, message_start_time, game_over, is_valid, col, row = handle_player_turn(
                                 event, gomoku, turn_start_time, player_times, message_start_time
                             )
