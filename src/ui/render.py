@@ -50,6 +50,8 @@ message_duration = 5  # Duration in seconds
 # Global variable to control game exit
 exit_game = False
 
+depth_value = 3
+
 # Temps pour chaque joueur
 player_times = {
     PlayerToken.BLACK.value: {"total_time": 0, "last_time": 0},
@@ -136,6 +138,23 @@ def draw_surrender_button(screen, button_rect, font, mouse_pos):
         button_rect.centery - text_surface.get_height() // 2
     ))
 
+def draw_slider(screen, x, y, width, min_val, max_val, current_val, font):
+    """Draw a horizontal slider and return the new value if moved."""
+    slider_rect = pygame.Rect(x, y, width, 8)
+    pygame.draw.rect(screen, GRAY, slider_rect)
+
+    # Position du curseur
+    knob_radius = 10
+    knob_x = x + int((current_val - min_val) / (max_val - min_val) * width)
+    knob_y = y + 4
+    pygame.draw.circle(screen, WHITE, (knob_x, knob_y), knob_radius)
+
+    # Texte
+    text = font.render(f"AI Depth: {current_val}", True, WHITE)
+    screen.blit(text, (x, y - 30))
+
+    return slider_rect, knob_x, knob_radius
+
 def handle_quit_button(mouse_pos, quit_center, radius):
     """Check if the 'Quitter' button is clicked and quit the game if it is."""
     if (mouse_pos[0] - quit_center[0]) ** 2 + (mouse_pos[1] - quit_center[1]) ** 2 <= radius ** 2:
@@ -180,6 +199,30 @@ def get_ai_suggestion(gomoku, ia):
     _, best_move = ia.minmax(3, True, True)
     return best_move if best_move else None
 
+def handle_depth_slider(slider_x: int, slider_y: int, slider_width: int, mouse_pos, font) -> tuple:
+    """
+    Displays and manages the AI depth slider.
+    Returns the rect of the slider (for collisions) and the updated state of depth_value.
+    """
+    global depth_value
+    slider_rect, knob_x, knob_radius = draw_slider(
+        screen,
+        slider_x,
+        slider_y,
+        slider_width,
+        1, 11,
+        depth_value,
+        font
+    )
+
+    if pygame.mouse.get_pressed()[0] and slider_rect.collidepoint(mouse_pos):
+        relative_x = mouse_pos[0] - slider_rect.x
+        ratio = relative_x / slider_rect.width
+        new_depth = max(1, min(11, int(round(ratio * (11 - 1) + 1))))
+        depth_value = new_depth
+
+    return slider_rect
+
 def main_menu():
     """Display the main menu and handle user interaction."""
     font = pygame.font.Font(None, 60)
@@ -214,6 +257,13 @@ def main_menu():
         # Draw the "Quitter" button using draw_quit_button
         draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, QUIT_BUTTON_HOVER_COLOR)
         
+        # Draw the slider
+        slider_font = pygame.font.Font(None, 30)
+        slider_x = total_screen_width // 2 - 100
+        slider_y = 600
+        slider_width = 200
+        slider_rect = handle_depth_slider(slider_x, slider_y, slider_width, mouse_pos, slider_font)
+
         # Event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -265,6 +315,13 @@ def end_game_menu(winner):
         # Draw the "Quitter" button using draw_quit_button
         draw_quit_button(screen, quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, QUIT_BUTTON_HOVER_COLOR)
         
+        # Draw the slider
+        slider_font = pygame.font.Font(None, 30)
+        slider_x = total_screen_width // 2 - 100
+        slider_y = 580
+        slider_width = 200
+        slider_rect = handle_depth_slider(slider_x, slider_y, slider_width, mouse_pos, slider_font)
+
         # Event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -432,7 +489,7 @@ def render_game_ui():
         """Handle the AI's turn."""
         global ai_process_time
         time_ai_start = time.time()
-        score, best_move = ai.minmax(3, True, True)
+        score, best_move = ai.minmax(depth_value, True, True)
         time_ai_end = time.time()
         ai_process_time = time_ai_end - time_ai_start
         if best_move:
