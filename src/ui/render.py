@@ -21,7 +21,9 @@ WINNER_COLOR = (255, 0, 0)
 BUTTON_COLOR = (70, 130, 180) # Color for buttons in the menu
 BUTTON_HOVER_COLOR = (100, 149, 237) # Hover color for buttons
 QUIT_BUTTON_COLOR = (220, 20, 60)    # Color for the quit button
-QUIT_BUTTON_HOVER_COLOR = (255, 69, 0)
+HOVER_COLOR = (255, 69, 0)
+COLOR_ON = (0, 200, 0)
+COLOR_OFF = (200, 0, 0)
 # Temps pour chaque joueur
 player_times = {
     PlayerToken.BLACK.value: {"total_time": 0, "last_time": 0},
@@ -44,6 +46,7 @@ class GomokuUi:
         self.message_start_time = None
         self.turn_start_time = None
         self.exit_game = False
+        self.pause_after_game = False
 
         self.cell_size = 40  # Size of the board cells
         self.screen_size = self.board_size * self.cell_size
@@ -92,6 +95,30 @@ class GomokuUi:
             self.screen.blit(text_surface, (message_x, message_y))
             message_y += line_spacing
 
+    def draw_toggle_pause_button(self) -> pygame.Rect:
+        """Draw the ON/OFF button for a pause after the game,
+        so you can see the state of the game before quitting.."""
+        toggle_font = pygame.font.Font(None, 30)
+        toggle_width = 240
+        toggle_height = 40
+        padding = 30
+
+        toggle_x = padding
+        toggle_y = self.total_screen_height - toggle_height - padding
+        toggle_rect = pygame.Rect(toggle_x, toggle_y, toggle_width, toggle_height)
+
+        label = "Pause: ON" if self.pause_after_game else "Pause: OFF"
+        color = (0, 200, 0) if self.pause_after_game else (200, 0, 0)
+
+        pygame.draw.rect(self.screen, color, toggle_rect)
+        text_surface = toggle_font.render(label, True, WHITE)
+
+        text_x = toggle_rect.centerx - text_surface.get_width() // 2
+        text_y = toggle_rect.centery - text_surface.get_height() // 2
+        self.screen.blit(text_surface, (text_x, text_y))
+
+        return toggle_rect
+
     def draw_button(self, button_rect, text, font, mouse_pos, button_color, hover_color, text_color, outline_color=None):
         """Draw a button with hover effect, text, and optional outline."""
         if button_rect.collidepoint(mouse_pos):
@@ -117,22 +144,19 @@ class GomokuUi:
         self.screen.blit(quit_text, (quit_center[0] - quit_text.get_width() // 2,
                                 quit_center[1] - quit_text.get_height() // 2))
 
-    def draw_surrender_button(self, button_rect, font, mouse_pos):
-        """Draw the 'Surrender' button."""
-        text_color = WHITE
-        button_color = (178, 34, 34)  # Dark red
-        hover_color = (220, 20, 60)   # Bright red on hover
-
+    def draw_generic_game_button(self, button_rect, font, mouse_pos, text, color, hover_color, text_color=WHITE):
+        """
+        Draws a generic button in the game interface with a hover effect.
+        """
         if button_rect.collidepoint(mouse_pos):
             pygame.draw.rect(self.screen, hover_color, button_rect)
         else:
-            pygame.draw.rect(self.screen, button_color, button_rect)
+            pygame.draw.rect(self.screen, color, button_rect)
 
-        text_surface = font.render("Surrender", True, text_color)
-        self.screen.blit(text_surface, (
-            button_rect.centerx - text_surface.get_width() // 2,
-            button_rect.centery - text_surface.get_height() // 2
-        ))
+        text_surface = font.render(text, True, text_color)
+        text_x = button_rect.centerx - text_surface.get_width() // 2
+        text_y = button_rect.centery - text_surface.get_height() // 2
+        self.screen.blit(text_surface, (text_x, text_y))
 
     def draw_slider(self, x, y, width, min_val, max_val, current_val, font):
         """Draw a horizontal slider and return the new value if moved."""
@@ -146,7 +170,7 @@ class GomokuUi:
         pygame.draw.circle(self.screen, WHITE, (knob_x, knob_y), knob_radius)
 
         # Texte
-        text = font.render(f"AI Depth: {current_val}", True, WHITE)
+        text = font.render(f"AI Depth/Difficulté: {current_val}", True, WHITE)
         self.screen.blit(text, (x, y - 30))
 
         return slider_rect, knob_x, knob_radius
@@ -173,23 +197,6 @@ class GomokuUi:
             ), radius)
             pygame.display.flip()
             time.sleep(duration / steps)
-
-    def draw_hint_button(self, button_rect, font, mouse_pos):
-        """Draw the button to get an IA hint."""
-        text_color = WHITE
-        button_color = BUTTON_COLOR
-        hover_color = BUTTON_HOVER_COLOR
-
-        if button_rect.collidepoint(mouse_pos):
-            pygame.draw.rect(self.screen, hover_color, button_rect)
-        else:
-            pygame.draw.rect(self.screen, button_color, button_rect)
-
-        text_surface = font.render("IA Hint", True, text_color)
-        self.screen.blit(text_surface, (
-            button_rect.centerx - text_surface.get_width() // 2,
-            button_rect.centery - text_surface.get_height() // 2
-        ))
 
     @staticmethod
     def get_ai_suggestion(gomoku, ia):
@@ -251,7 +258,7 @@ class GomokuUi:
                         BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
             
             # Draw the "Quitter" button using draw_quit_button
-            self.draw_quit_button(quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, QUIT_BUTTON_HOVER_COLOR)
+            self.draw_quit_button(quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, HOVER_COLOR)
             
             # Draw the slider
             slider_font = pygame.font.Font(None, 30)
@@ -259,6 +266,8 @@ class GomokuUi:
             slider_y = 600
             slider_width = 200
             slider_rect = self.handle_depth_slider(slider_x, slider_y, slider_width, mouse_pos, slider_font)
+
+            toggle_rect = self.draw_toggle_pause_button()
 
             # Event handling
             for event in pygame.event.get():
@@ -272,6 +281,8 @@ class GomokuUi:
                         return "special"
                     elif duo_button.collidepoint(mouse_pos):  # Handle "Duo" button click
                         return "duo"
+                    elif toggle_rect.collidepoint(mouse_pos):
+                        self.pause_after_game = not self.pause_after_game
                     GomokuUi.handle_quit_button(mouse_pos, quit_button_center, quit_button_radius)
 
             pygame.display.flip()
@@ -309,7 +320,7 @@ class GomokuUi:
                         BUTTON_COLOR, BUTTON_HOVER_COLOR, WHITE, outline_color=GRAY)
             
             # Draw the "Quitter" button using draw_quit_button
-            self.draw_quit_button(quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, QUIT_BUTTON_HOVER_COLOR)
+            self.draw_quit_button(quit_button_center, quit_button_radius, quit_font, mouse_pos, WHITE, QUIT_BUTTON_COLOR, HOVER_COLOR)
             
             # Draw the slider
             slider_font = pygame.font.Font(None, 30)
@@ -317,6 +328,8 @@ class GomokuUi:
             slider_y = 580
             slider_width = 200
             slider_rect = self.handle_depth_slider(slider_x, slider_y, slider_width, mouse_pos, slider_font)
+
+            toggle_rect = self.draw_toggle_pause_button()
 
             # Event handling
             for event in pygame.event.get():
@@ -328,6 +341,8 @@ class GomokuUi:
                         return "replay"
                     elif menu_button.collidepoint(mouse_pos):
                         return "menu"
+                    elif toggle_rect.collidepoint(mouse_pos):
+                        self.pause_after_game = not self.pause_after_game
                     GomokuUi.handle_quit_button(mouse_pos, quit_button_center, quit_button_radius)
 
             pygame.display.flip()
@@ -413,7 +428,11 @@ class GomokuUi:
         surrender_button_y = self.total_screen_height - 160
         surrender_button_rect = pygame.Rect(surrender_button_x, surrender_button_y, 200, 50)
         surrender_font = pygame.font.Font(None, 36)
-        self.draw_surrender_button(surrender_button_rect, surrender_font, pygame.mouse.get_pos())
+        self.draw_generic_game_button(surrender_button_rect, surrender_font, pygame.mouse.get_pos(), 
+            text="Surrender",
+            color=(178, 34, 34),
+            hover_color=HOVER_COLOR
+        )
 
         return surrender_button_rect
 
@@ -457,7 +476,11 @@ class GomokuUi:
             hint_button_rect = pygame.Rect(hint_button_x, hint_button_y, 200, 50)
             small_font = pygame.font.Font(None, 40)
 
-            self.draw_hint_button(hint_button_rect, small_font, pygame.mouse.get_pos())
+            self.draw_generic_game_button(hint_button_rect, small_font, pygame.mouse.get_pos(),
+                text="IA Hint",
+                color=BUTTON_COLOR,
+                hover_color=BUTTON_HOVER_COLOR
+            )
 
             # Displays a temporary red dot if a suggestion has been made
             if self.ai_suggestion:
@@ -576,16 +599,19 @@ class GomokuUi:
                         game_over = True
                         winner = "Noir" if gomoku.getCurrentPlayer() == PlayerToken.BLACK.value else "Blanc"            
                     if game_over:
-                        # to see the last move played
-                        # print("Press SPACE to continue...")
-                        # waiting = True
-                        # while waiting:
-                        #     for event in pygame.event.get():
-                        #         if event.type == pygame.QUIT:
-                        #             pygame.quit()
-                        #             sys.exit()
-                        #         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                        #             waiting = False
+                        if self.pause_after_game:
+                            font = pygame.font.Font(None, 40)
+                            text = font.render("Press SPACE to continue...", True, WHITE)
+                            self.screen.blit(text, (self.border_size + self.screen_size // 2 - text.get_width() // 2, self.total_screen_height - 80))
+                            pygame.display.flip()
+                            waiting = True
+                            while waiting:
+                                for event in pygame.event.get():
+                                    if event.type == pygame.QUIT:
+                                        pygame.quit()
+                                        sys.exit()
+                                    elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                                        waiting = False
                         GomokuUi.reset_player_times(player_times)
                         self.ai_process_time = 0
                         action = self.end_game_menu(winner)
