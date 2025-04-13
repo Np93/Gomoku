@@ -1,8 +1,9 @@
-from src.ui.render import render_game_ui
+from src.ui.render import GomokuUi
 
 
 def main():
-    render_game_ui()
+    ui = GomokuUi()
+    ui.render_game_ui()
 
 if __name__ == "__main__":
     main()
