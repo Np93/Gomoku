@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  gomoku:
+    build: .
+    image: gomoku
+    container_name: gomoku
+    working_dir: /app
+    tty: true
