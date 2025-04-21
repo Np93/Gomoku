@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cstring>
+#include <set>
 
 // Definition of the global debug flag
 bool DEBUG = false;
@@ -35,6 +36,7 @@ Gomoku Gomoku::clone() const
     newCopy.forcedMoves = forcedMoves;  // copy
     newCopy.gameOver = gameOver;
 	newCopy.score = score;
+	newCopy.lastMoves = lastMoves; // copy last moves
     return newCopy;
 }
 
@@ -93,6 +95,60 @@ std::vector<std::pair<int,int>> Gomoku::getAllPossibleMoves() const
         }
     }
     return possibleMoves;
+}
+
+std::vector<std::pair<int,int>> Gomoku::getMovesAroundLastMoves() const
+{
+	std::vector<std::pair<int, int>> possibleMoves;
+	std::set<std::pair<int, int>> uniqueMoves;
+
+	if (!lastMoves.firstMove.first && !lastMoves.firstMove.second)
+	{
+		std::cout << "No last moves available, returning all close moves." << std::endl;
+		return getAllCloseMoves();
+	}
+
+	std::vector<std::pair<int, int>> directions = {
+		{0, 1}, {1, 0}, {1, 1}, {1, -1}, {0, -1}, {-1, 0}, {-1, -1}, {-1, 1}
+	};
+
+	// Loop over the last three moves
+	for (const auto& move : {lastMoves.firstMove, lastMoves.secondMove, lastMoves.thirdMove}) {
+		if (move.first == -1 && move.second == -1) continue;
+
+		// Expand window around the move (±5 range)
+		for (int dr = -5; dr <= 5; ++dr) {
+			for (int dc = -5; dc <= 5; ++dc) {
+				int r = move.first + dr;
+				int c = move.second + dc;
+
+				if (!isWithinBounds(r, c)) continue;
+				if (board[r][c] != EMPTY) continue;
+
+				// Check for at least one non-empty neighbor
+				bool hasNeighbor = false;
+				for (const auto& dir : directions) {
+					int adjRF = r + dir.first;
+					int adjCF = c + dir.second;
+					int adjRB = r - dir.first;
+					int adjCB = c - dir.second;
+
+					if ((isWithinBounds(adjRF, adjCF) && board[adjRF][adjCF] != EMPTY) ||
+						(isWithinBounds(adjRB, adjCB) && board[adjRB][adjCB] != EMPTY)) {
+						hasNeighbor = true;
+						break;
+					}
+				}
+
+				if (hasNeighbor) {
+					uniqueMoves.emplace(r, c);
+				}
+			}
+		}
+	}
+
+	possibleMoves.assign(uniqueMoves.begin(), uniqueMoves.end());
+	return possibleMoves;
 }
 
 std::vector<std::pair<int,int>> Gomoku::getAllCloseMoves() const
@@ -215,24 +271,49 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
     }
 
     int captureScore  = capturedCount * 10;
-
+	
     // Evaluate additional tactical factors.
+	int playerPebblesTaken = (currentPlayer == BLACK) ? blackPlayerPebblesTaken : whitePlayerPebblesTaken;
     int threatScore   = getNumberOfThreatsMove(currentPlayer, placedRow, placedCol) * 5;
-    int aligned4Score = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol) * 40;
-    int moveScore     = captureScore + threatScore + aligned4Score;
+	auto [open4, blocked4] = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol);
+
+	int aligned4Score = (open4 * 40) + (blocked4 * 10);
+	int moveScore     = captureScore + threatScore + aligned4Score;
+	if (playerPebblesTaken >= 8) {
+		moveScore += 10;
+	}
+
+	// NOTE those line are mainly for the correction of the subject
+	if (currentPlayer == BLACK) {
+		backPlayeraligned4Stone += open4;
+	} else {
+		whitePlayeraligned4Stone += open4;
+	}
+	
+	if (whitePlayeraligned4Stone > 10 && whitePlayerPebblesTaken <= 4)
+	{
+		std::cout << "White player has more than 10 aligned 4 stones and less than 4 pebbles taken" << std::endl;
+		moveScore += aligned4Score * 0.25;
+	}
 
     if (gameType != "special") {
 	    // Check win conditions.
         if (process10Pebbles())
+		{
+			updateLastMoves(placedRow, placedCol);
             return std::make_tuple(true, "win_score", 1000);
+		}
     }
 
     if (process5Pebbles(placedRow, placedCol))
+	{
+		updateLastMoves(placedRow, placedCol);
         return std::make_tuple(true, "win_alignments", 1000);
+	}
 
     // Change turn only if the game is not over.
     changePlayer();
-
+	updateLastMoves(placedRow, placedCol);
     return std::make_tuple(true, "valid_move", moveScore);
 }
 
@@ -534,52 +615,56 @@ int Gomoku::getNumberOfThreatsMove(int player, int placedRow, int placedCol)
 }
 
 // Modified to check only the current move's surroundings
-int Gomoku::getNumberOf4AlignedMove(int player, int placedRow, int placedCol) const
+std::pair<int, int> Gomoku::getNumberOf4AlignedMove(int player, int placedRow, int placedCol) const
 {
-    int count = 0;
-    std::vector<std::pair<int,int>> directions = {
-        {0,1}, {1,0}, {1,1}, {1,-1}
-    };
+	int countOpen = 0;
+	int countBlocked = 0;
+	std::vector<std::pair<int,int>> directions = {
+		{0,1}, {1,0}, {1,1}, {1,-1}
+	};
 
-    for (auto &dir : directions)
-    {
-        int dr = dir.first;
-        int dc = dir.second;
-        int countPlayer = 1; // include the current stone
+	for (auto &dir : directions)
+	{
+		int dr = dir.first;
+		int dc = dir.second;
+		int countPlayer = 1; // include the current stone
 
-        // Check forward direction
-        int rr = placedRow + dr;
-        int cc = placedCol + dc;
-        while (isWithinBounds(rr, cc) && board[rr][cc] == player)
-        {
-            countPlayer++;
-            rr += dr;
-            cc += dc;
-        }
+		// Check forward direction
+		int rr = placedRow + dr;
+		int cc = placedCol + dc;
+		while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+		{
+			countPlayer++;
+			rr += dr;
+			cc += dc;
+		}
 
-        // Ensure the forward end is open
-        if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
-            continue;
+		// Check if the forward end is open or blocked
+		bool forwardOpen = isWithinBounds(rr, cc) && board[rr][cc] == EMPTY;
 
-        // Check backward direction
-        rr = placedRow - dr;
-        cc = placedCol - dc;
-        while (isWithinBounds(rr, cc) && board[rr][cc] == player)
-        {
-            countPlayer++;
-            rr -= dr;
-            cc -= dc;
-        }
+		// Check backward direction
+		rr = placedRow - dr;
+		cc = placedCol - dc;
+		while (isWithinBounds(rr, cc) && board[rr][cc] == player)
+		{
+			countPlayer++;
+			rr -= dr;
+			cc -= dc;
+		}
 
-        // Ensure the backward end is open
-        if (!isWithinBounds(rr, cc) || board[rr][cc] != EMPTY)
-            continue;
+		// Check if the backward end is open or blocked
+		bool backwardOpen = isWithinBounds(rr, cc) && board[rr][cc] == EMPTY;
 
-        // Count only exactly 4 aligned stones
-        if (countPlayer == 4)
-            count++;
-    }
-    return count;
+		// Count only exactly 4 aligned stones
+		if (countPlayer == 4)
+		{
+			if (forwardOpen && backwardOpen)
+				countOpen++;
+			else if (forwardOpen || backwardOpen)
+				countBlocked++;
+		}
+	}
+	return {countOpen, countBlocked};
 }
 
 int Gomoku::getNumberOfThreats(int player)
