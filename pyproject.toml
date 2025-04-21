@@ -1,18 +1,24 @@
-[project]
-name = "gomoku"
+[tool.poetry]
+name = "src"
 version = "0.1.0"
+description = ""
+authors = ["jreivilo <j@outlook.com>"]
 readme = "README.md"
 requires-python = "==3.11.*"
 
-dependencies = [
-    "pandas>=2.2.0",
-    "numpy>=1.26.3",
-    "matplotlib>=3.8.2",
-    "pygame>=2.6.1",
-    "pytest>=8.3.4",
-    "pip>=24.3.1",
-    "pybind11>=2.13.6",
-]
+[tool.poetry.dependencies]
+python = "==3.11.*"
+pandas = "^2.2.0"
+numpy = "^1.26.3"
+matplotlib = "^3.8.2"
+pygame = "^2.6.1"
+pytest = "^8.3.4"
+pybind11 = "^2.13.6"
 
-[tool.setuptools]
-packages = ["src"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

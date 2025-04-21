@@ -1,0 +1,10 @@
+name: gomoku
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - cmake
+  - make
+  - pybind11
+  - uv
