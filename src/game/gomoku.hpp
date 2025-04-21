@@ -70,6 +70,7 @@ public:
 	{
 		std::pair<int, int> firstMove;
 		std::pair<int, int> secondMove;
+		std::pair<int, int> thirdMove;
 	};
 
 private:
@@ -79,6 +80,8 @@ private:
     int currentPlayer;
     int whitePlayerPebblesTaken;
     int blackPlayerPebblesTaken;
+	int backPlayeraligned4Stone = 0;
+	int whitePlayeraligned4Stone = 0;
     std::vector<std::pair<int,int>> forcedMoves;
     bool gameOver;
 
@@ -104,6 +107,7 @@ private:
     std::vector<std::pair<int, int>> getCapturePoints(int player); // debug
 	void updateLastMoves(int row, int col)
 	{
+		lastMoves.thirdMove = lastMoves.secondMove;
 		lastMoves.secondMove = lastMoves.firstMove;
 		lastMoves.firstMove = {row, col};
 	}

@@ -93,10 +93,13 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
     
     // Use forced moves if available; otherwise, get all close moves.
     auto forced_moves = m_gomoku.getForcedMoves();
-    std::vector<std::pair<int, int>> possible_moves = 
-        (!forced_moves.empty()) ? forced_moves : m_gomoku.getMovesAroundLastMoves();
+    // std::vector<std::pair<int, int>> possible_moves = 
+    //     (!forced_moves.empty()) ? forced_moves : m_gomoku.getMovesAroundLastMoves();
     
-    if (possible_moves.empty()) {
+	std::vector<std::pair<int, int>> possible_moves = 
+		(!forced_moves.empty()) ? forced_moves : m_gomoku.getAllCloseMoves();
+	
+	if (possible_moves.empty()) {
         std::cout << "No possible moves\n";
         return {0.0, {-1, -1}};
     }
@@ -108,8 +111,8 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
     double best_score = is_maximizing ? minus_infinity() : plus_infinity();
     
     // Initialize alpha–beta values. Mimic alpha-beta pruning
-	double alpha = -50;
-	double beta  = 50;
+	double alpha = -500;
+	double beta  = 500;
     
     // Lambda to update the best move(s)
     auto update_best = [&](double score, const std::pair<int, int>& move) {
@@ -149,14 +152,12 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
             if (is_maximizing) {
                 alpha = std::max(alpha, best_score);
                 if (alpha >= beta) {
-					std::cout << "Alpha cut-off at depth " << depth << "\n";
                     // Beta cut-off: no need to check remaining moves
                     break;
                 }
             } else {
                 beta = std::min(beta, best_score);
                 if (beta <= alpha) {
-					std::cout << "Beta cut-off at depth " << depth << "\n";
                     // Alpha cut-off: no need to check remaining moves
                     break;
                 }
@@ -194,7 +195,7 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
 
     // Adjust the heuristic score based on the current player
     double adjusted_score = cloned_state.getScore();
-    adjusted_score += (cloned_state.getCurrentPlayer() == BLACK ? 1 : -1) * (move_score + depth);
+    adjusted_score += (cloned_state.getCurrentPlayer() == BLACK ? 1 : -1) * (move_score + depth * 10);
     cloned_state.setScore(adjusted_score);
 
     // Terminal depth - return heuristic score

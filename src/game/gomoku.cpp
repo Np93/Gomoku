@@ -102,8 +102,9 @@ std::vector<std::pair<int,int>> Gomoku::getMovesAroundLastMoves() const
 	std::vector<std::pair<int, int>> possibleMoves;
 	std::set<std::pair<int, int>> uniqueMoves;
 
-	if (!lastMoves.firstMove.first && !lastMoves.firstMove.second &&
-		!lastMoves.secondMove.first && !lastMoves.secondMove.second) {
+	if (!lastMoves.firstMove.first && !lastMoves.firstMove.second)
+	{
+		std::cout << "No last moves available, returning all close moves." << std::endl;
 		return getAllCloseMoves();
 	}
 
@@ -111,8 +112,8 @@ std::vector<std::pair<int,int>> Gomoku::getMovesAroundLastMoves() const
 		{0, 1}, {1, 0}, {1, 1}, {1, -1}, {0, -1}, {-1, 0}, {-1, -1}, {-1, 1}
 	};
 
-	// Loop over both last moves
-	for (const auto& move : {lastMoves.firstMove, lastMoves.secondMove}) {
+	// Loop over the last three moves
+	for (const auto& move : {lastMoves.firstMove, lastMoves.secondMove, lastMoves.thirdMove}) {
 		if (move.first == -1 && move.second == -1) continue;
 
 		// Expand window around the move (±5 range)
@@ -275,10 +276,24 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
 	int playerPebblesTaken = (currentPlayer == BLACK) ? blackPlayerPebblesTaken : whitePlayerPebblesTaken;
     int threatScore   = getNumberOfThreatsMove(currentPlayer, placedRow, placedCol) * 5;
 	auto [open4, blocked4] = getNumberOf4AlignedMove(currentPlayer, placedRow, placedCol);
+
 	int aligned4Score = (open4 * 40) + (blocked4 * 10);
 	int moveScore     = captureScore + threatScore + aligned4Score;
 	if (playerPebblesTaken >= 8) {
 		moveScore += 10;
+	}
+
+	// NOTE those line are mainly for the correction of the subject
+	if (currentPlayer == BLACK) {
+		backPlayeraligned4Stone += open4;
+	} else {
+		whitePlayeraligned4Stone += open4;
+	}
+	
+	if (whitePlayeraligned4Stone > 10 && whitePlayerPebblesTaken <= 4)
+	{
+		std::cout << "White player has more than 10 aligned 4 stones and less than 4 pebbles taken" << std::endl;
+		moveScore += aligned4Score * 0.25;
 	}
 
     if (gameType != "special") {

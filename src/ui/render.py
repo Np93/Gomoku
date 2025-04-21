@@ -407,7 +407,7 @@ def render_game_ui():
         """Handle the AI's turn."""
         global ai_process_time
         time_ai_start = time.time()
-        score, best_move = ai.minmax(5, True, True)
+        score, best_move = ai.minmax(3, True, True)
         time_ai_end = time.time()
         ai_process_time = time_ai_end - time_ai_start
         if best_move:
