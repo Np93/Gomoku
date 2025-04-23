@@ -237,11 +237,11 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
 		whitePlayeraligned4Stone += open4;
 	}
 	
-	// if (whitePlayeraligned4Stone > 10 && whitePlayerPebblesTaken <= 4)
-	// {
-	// 	std::cout << "White player has more than 10 aligned 4 stones and less than 4 pebbles taken" << std::endl;
-	// 	moveScore += aligned4Score * 0.25;
-	// }
+	if (whitePlayeraligned4Stone > 10 && whitePlayerPebblesTaken <= 4)
+	{
+		std::cout << "White player has more than 10 aligned 4 stones and less than 4 pebbles taken" << std::endl;
+		moveScore += aligned4Score * 0.25;
+	}
 
     if (gameType != "special") {
 	    // Check win conditions.
