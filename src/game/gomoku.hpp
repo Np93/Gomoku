@@ -34,7 +34,6 @@ public:
 
     std::vector<std::pair<int,int>> getAllPossibleMoves() const;
     std::vector<std::pair<int,int>> getAllCloseMoves() const;
-	std::vector<std::pair<int,int>> getMovesAroundLastMoves() const;
 
 
     std::tuple<bool, std::string, int> processMove(int placedRow, int placedCol);
@@ -66,12 +65,6 @@ public:
 	void setScore(double score) { this->score = score; }
 
 	std::string computeStateHash() const;
-	struct LastMoves
-	{
-		std::pair<int, int> firstMove;
-		std::pair<int, int> secondMove;
-		std::pair<int, int> thirdMove;
-	};
 
 private:
     int boardSize;
@@ -85,7 +78,6 @@ private:
     std::vector<std::pair<int,int>> forcedMoves;
     bool gameOver;
 
-	LastMoves lastMoves;
 	double score;
 
     void changePlayer();
@@ -105,12 +97,6 @@ private:
     bool hasMoreThan5PebblesAligned(int placedRow, int placedCol) const;
     bool is5PebblesAlignedBreakable(int placedRow, int placedCol);
     std::vector<std::pair<int, int>> getCapturePoints(int player); // debug
-	void updateLastMoves(int row, int col)
-	{
-		lastMoves.thirdMove = lastMoves.secondMove;
-		lastMoves.secondMove = lastMoves.firstMove;
-		lastMoves.firstMove = {row, col};
-	}
 };
 
 #endif // GOMOKU_HPP
