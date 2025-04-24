@@ -33,10 +33,11 @@ Gomoku Gomoku::clone() const
     newCopy.currentPlayer = currentPlayer;
     newCopy.whitePlayerPebblesTaken = whitePlayerPebblesTaken;
     newCopy.blackPlayerPebblesTaken = blackPlayerPebblesTaken;
+	newCopy.backPlayeraligned4Stone = backPlayeraligned4Stone;
+	newCopy.whitePlayeraligned4Stone = whitePlayeraligned4Stone;
     newCopy.forcedMoves = forcedMoves;  // copy
     newCopy.gameOver = gameOver;
 	newCopy.score = score;
-	newCopy.lastMoves = lastMoves; // copy last moves
     return newCopy;
 }
 
@@ -95,60 +96,6 @@ std::vector<std::pair<int,int>> Gomoku::getAllPossibleMoves() const
         }
     }
     return possibleMoves;
-}
-
-std::vector<std::pair<int,int>> Gomoku::getMovesAroundLastMoves() const
-{
-	std::vector<std::pair<int, int>> possibleMoves;
-	std::set<std::pair<int, int>> uniqueMoves;
-
-	if (!lastMoves.firstMove.first && !lastMoves.firstMove.second)
-	{
-		std::cout << "No last moves available, returning all close moves." << std::endl;
-		return getAllCloseMoves();
-	}
-
-	std::vector<std::pair<int, int>> directions = {
-		{0, 1}, {1, 0}, {1, 1}, {1, -1}, {0, -1}, {-1, 0}, {-1, -1}, {-1, 1}
-	};
-
-	// Loop over the last three moves
-	for (const auto& move : {lastMoves.firstMove, lastMoves.secondMove, lastMoves.thirdMove}) {
-		if (move.first == -1 && move.second == -1) continue;
-
-		// Expand window around the move (±5 range)
-		for (int dr = -5; dr <= 5; ++dr) {
-			for (int dc = -5; dc <= 5; ++dc) {
-				int r = move.first + dr;
-				int c = move.second + dc;
-
-				if (!isWithinBounds(r, c)) continue;
-				if (board[r][c] != EMPTY) continue;
-
-				// Check for at least one non-empty neighbor
-				bool hasNeighbor = false;
-				for (const auto& dir : directions) {
-					int adjRF = r + dir.first;
-					int adjCF = c + dir.second;
-					int adjRB = r - dir.first;
-					int adjCB = c - dir.second;
-
-					if ((isWithinBounds(adjRF, adjCF) && board[adjRF][adjCF] != EMPTY) ||
-						(isWithinBounds(adjRB, adjCB) && board[adjRB][adjCB] != EMPTY)) {
-						hasNeighbor = true;
-						break;
-					}
-				}
-
-				if (hasNeighbor) {
-					uniqueMoves.emplace(r, c);
-				}
-			}
-		}
-	}
-
-	possibleMoves.assign(uniqueMoves.begin(), uniqueMoves.end());
-	return possibleMoves;
 }
 
 std::vector<std::pair<int,int>> Gomoku::getAllCloseMoves() const
@@ -300,20 +247,17 @@ std::tuple<bool, std::string, int> Gomoku::processMove(int placedRow, int placed
 	    // Check win conditions.
         if (process10Pebbles())
 		{
-			updateLastMoves(placedRow, placedCol);
             return std::make_tuple(true, "win_score", 1000);
 		}
     }
 
     if (process5Pebbles(placedRow, placedCol))
 	{
-		updateLastMoves(placedRow, placedCol);
         return std::make_tuple(true, "win_alignments", 1000);
 	}
 
     // Change turn only if the game is not over.
     changePlayer();
-	updateLastMoves(placedRow, placedCol);
     return std::make_tuple(true, "valid_move", moveScore);
 }
 

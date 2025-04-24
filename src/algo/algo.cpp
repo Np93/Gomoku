@@ -93,8 +93,6 @@ ScoredMove GomokuAI::minmax(int depth, bool is_maximizing, bool is_first)
     
     // Use forced moves if available; otherwise, get all close moves.
     auto forced_moves = m_gomoku.getForcedMoves();
-    // std::vector<std::pair<int, int>> possible_moves = 
-    //     (!forced_moves.empty()) ? forced_moves : m_gomoku.getMovesAroundLastMoves();
     
 	std::vector<std::pair<int, int>> possible_moves = 
 		(!forced_moves.empty()) ? forced_moves : m_gomoku.getAllCloseMoves();
@@ -195,7 +193,7 @@ ScoredMove GomokuAI::evaluate_move(int row, int col, int depth, bool is_maximizi
 
     // Adjust the heuristic score based on the current player
     double adjusted_score = cloned_state.getScore();
-    adjusted_score += (cloned_state.getCurrentPlayer() == BLACK ? 1 : -1) * (move_score + depth * 10);
+    adjusted_score += (cloned_state.getCurrentPlayer() == BLACK ? 1 : -1) * (move_score + depth * 1);
     cloned_state.setScore(adjusted_score);
 
     // Terminal depth - return heuristic score
