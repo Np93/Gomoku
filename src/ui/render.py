@@ -67,6 +67,10 @@ class GomokuUi:
         Dessine le message de mouvement interdit dans le panneau latéral,
         en découpant le texte si nécessaire pour éviter qu'il dépasse les limites.
         """
+        if not message:
+            return
+        if isinstance(message, tuple):
+            message = " ".join([str(m) for m in message if m])
         font = pygame.font.Font(None, 32)
         max_width = self.score_panel_width - 20  # Largeur maximale pour le texte (ajustée pour laisser une marge)
         words = message.split()  # Découpe le texte en mots
